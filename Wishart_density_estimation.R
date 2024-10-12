@@ -30,8 +30,8 @@ libraries_to_load <- c(
 # Define the list of variables/functions to export to the worker nodes
 
 vars_to_export <- c(
-  "BB", "b_LG_test", "b_opt_MC", "b_test", "b_WK_test", 
-  "CholWishart", "compute_ISE", "construct_X", "cubature", 
+  "BB", "b_LG_test", "b_opt_MC", "b_opt_MC_grid", "b_test", "b_WK_test", 
+  "CholWishart", "compute_ISE", "construct_X", "cores_per_node", "cubature", 
   "d", "delta", "dmatrixbeta_typeII", "expm", "f", 
   "G", "hat_f", "integrand", "ISE", "ISE_MC", 
   "JJ", "j", "LaplacesDemon", "LG", "lmvgamma", 
@@ -97,7 +97,7 @@ RR <- 1:1 # replication indices
 
 cores_per_node <- 64 # number of cores for each node in the super-computer
 
-tol1 <- 1e-3
+tol1 <- 1e-1
 tol2 <- 1e-1
 
 #######################
