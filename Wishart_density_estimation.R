@@ -8,6 +8,7 @@ require("CholWishart")        # for the multivariate gamma function
 require("cubature")           # for integrals
 require("doFuture")           # for parallel execution with foreach
 require("expm")               # for matrix logarithms and exponentials
+require("fs")                 # for filesystem operations (dependency)
 require("future.batchtools")  # for batchtools integration with future
 require("ggplot2")            # for plotting
 require("LaplacesDemon")      # for the Wishart and inverse Wishart distributions
@@ -30,6 +31,7 @@ libraries_to_load <- c(
   "doFuture",
   "expm",
   "future.batchtools",
+  "fs",
   "ggplot2",
   "LaplacesDemon",
   "matrixcalc",
