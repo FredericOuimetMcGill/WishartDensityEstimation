@@ -4,16 +4,19 @@
 
 ## Written by Frederic Ouimet (October 2024)
 
-require("CholWishart") # for the multivariate gamma function
-require("cubature") # for integrals
-require("expm") # for matrix logarithms and exponentials
-require("ggplot2") # for plotting
-require("LaplacesDemon") # for the Wishart and inverse Wishart distributions
-require("matrixcalc") # for the function is.positive.definite
-require("matrixsampling") # for the matrix-type-2 Beta distribution
-require("optimx") # better bandwidth optimization
-require("parallel") # parallelization of calculations
-require("writexl") # to print the output in a Excel file
+require("CholWishart")        # for the multivariate gamma function
+require("cubature")           # for integrals
+require("doFuture")           # for parallel execution with foreach
+require("expm")               # for matrix logarithms and exponentials
+require("future.batchtools")  # for batchtools integration with future
+require("ggplot2")            # for plotting
+require("LaplacesDemon")      # for the Wishart and inverse Wishart distributions
+require("matrixcalc")         # for functions like is.positive.definite
+require("matrixsampling")     # for the matrix-type-II Beta distribution
+require("optimx")             # for improved bandwidth optimization
+require("parallel")           # for parallelization of calculations
+require("tidyverse")          # for data manipulation and visualization
+require("writexl")            # to write output to Excel files
 
 #####################
 ## Parallelization ##
