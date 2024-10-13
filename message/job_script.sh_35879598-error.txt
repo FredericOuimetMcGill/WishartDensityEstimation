@@ -1,0 +1,35 @@
+Loading required package: CholWishart
+Loading required package: cubature
+Loading required package: expm
+Loading required package: Matrix
+
+Attaching package: ‘expm’
+
+The following object is masked from ‘package:Matrix’:
+
+    expm
+
+Loading required package: ggplot2
+Loading required package: LaplacesDemon
+Loading required package: matrixcalc
+
+Attaching package: ‘matrixcalc’
+
+The following objects are masked from ‘package:LaplacesDemon’:
+
+    is.positive.definite, is.square.matrix, is.symmetric.matrix,
+    lower.triangle, upper.triangle
+
+Loading required package: matrixsampling
+
+Attaching package: ‘matrixsampling’
+
+The following objects are masked from ‘package:LaplacesDemon’:
+
+    rinvwishart, rwishart
+
+Loading required package: optimx
+Loading required package: parallel
+Loading required package: writexl
+/localscratch/spool/slurmd/job35879598/slurm_script: line 18: 195192 Killed                  Rscript Wishart_density_estimation.R
+slurmstepd: error: Detected 11 oom_kill events in StepId=35879598.batch. Some of the step tasks have been OOM Killed.

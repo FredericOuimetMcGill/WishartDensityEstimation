@@ -1,0 +1,37 @@
+Loading required package: CholWishart
+Loading required package: cubature
+Loading required package: expm
+Loading required package: Matrix
+
+Attaching package: ‘expm’
+
+The following object is masked from ‘package:Matrix’:
+
+    expm
+
+Loading required package: ggplot2
+Loading required package: LaplacesDemon
+Loading required package: matrixcalc
+
+Attaching package: ‘matrixcalc’
+
+The following objects are masked from ‘package:LaplacesDemon’:
+
+    is.positive.definite, is.square.matrix, is.symmetric.matrix,
+    lower.triangle, upper.triangle
+
+Loading required package: matrixsampling
+
+Attaching package: ‘matrixsampling’
+
+The following objects are masked from ‘package:LaplacesDemon’:
+
+    rinvwishart, rwishart
+
+Loading required package: optimx
+Loading required package: parallel
+Loading required package: writexl
+Error in checkForRemoteErrors(val) : 
+  6 nodes produced errors; first error: could not find function "b_opt_MC_grid"
+Calls: parLapply ... clusterApply -> staticClusterApply -> checkForRemoteErrors
+Execution halted
