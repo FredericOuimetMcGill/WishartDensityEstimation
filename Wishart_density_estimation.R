@@ -22,25 +22,78 @@ require("writexl") # to print the output in a Excel file
 # Define the list of libraries to load on each cluster node
 
 libraries_to_load <- c(
-  "CholWishart", "cubature", "expm", "ggplot2", 
-  "LaplacesDemon", "matrixcalc", "matrixsampling", 
-  "optimx", "parallel", "writexl"
+  "CholWishart",
+  "cubature",
+  "doFuture",
+  "expm",
+  "future.batchtools",
+  "ggplot2",
+  "LaplacesDemon",
+  "matrixcalc",
+  "matrixsampling",
+  "optimx",
+  "parallel",
+  "tidyverse",
+  "writexl"
 )
 
 # Define the list of variables/functions to export to the worker nodes
 
 vars_to_export <- c(
-  "BB", "b_LG_test", "b_opt_MC", "b_opt_MC_grid", "b_test", "b_WK_test", 
-  "CholWishart", "compute_ISE", "construct_X", "cores_per_node", "cubature", 
-  "d", "delta", "dmatrixbeta_typeII", "expm", "f", 
-  "G", "hat_f", "integrand", "ISE", "ISE_MC", 
-  "JJ", "j", "LaplacesDemon", "LG", "lmvgamma", 
-  "logm", "LSCV", "LSCV_MC", "matrixcalc", "matrixsampling", 
-  "method", "MM", "NN", "n_LG_test", "n_test", 
-  "n_WK_test", "optimx", "path", "rotation_matrix", 
-  "RR", "S1", "S2", "S3", "S4", "setup_parallel_cluster", 
-  "symmetrize", "test_estimator_integral", "tol1", "tol2", 
-  "vars_to_export", "writexl", "XX", "XX_sample"
+  "BB",
+  "CholWishart",
+  "G",
+  "ISE",
+  "ISE_MC",
+  "JJ",
+  "LG",
+  "LSCV",
+  "LSCV_MC",
+  "LaplacesDemon",
+  "MM",
+  "NN",
+  "RR",
+  "S1",
+  "S2",
+  "S3",
+  "S4",
+  "XX",
+  "XX_sample",
+  "b_LG_test",
+  "b_WK_test",
+  "b_opt_MC",
+  "b_opt_MC_grid",
+  "b_test",
+  "compute_ISE",
+  "construct_X",
+  "cores_per_node",
+  "cubature",
+  "d",
+  "delta",
+  "dmatrixbeta_typeII",
+  "expm",
+  "f",
+  "hat_f",
+  "integrand",
+  "j",
+  "lmvgamma",
+  "logm",
+  "matrixcalc",
+  "matrixsampling",
+  "method",
+  "n_LG_test",
+  "n_WK_test",
+  "n_test",
+  "optimx",
+  "path",
+  "rotation_matrix",
+  "setup_parallel_cluster",
+  "symmetrize",
+  "test_estimator_integral",
+  "tol1",
+  "tol2",
+  "vars_to_export",
+  "writexl"
 )
 
 # Sets up a parallel cluster, loads necessary libraries, and exports required variables globally
@@ -91,13 +144,13 @@ d <- 2 # width of the square matrices
 delta <- 0.1 # lower bound on the eigenvalues of SPD matrices in LSCV
 
 MM <- list("WK","LG") # list of density estimation methods
-NN <- c(100, 200) # sample sizes
+NN <- c(100) # sample sizes
 JJ <- 1:1 # target density function indices
-RR <- 1:1 # replication indices
+RR <- 1:2 # replication indices
 
 cores_per_node <- 63 # number of cores for each node in the super-computer
 
-tol1 <- 1e-2
+tol1 <- 1e-1
 tol2 <- 1e-1
 
 #######################
@@ -1116,10 +1169,99 @@ ISE <- function(XX, j, method, tolerance = tol1) {
 ## Main code (exact version) ##
 ###############################
 
-# Initialize parallel cluster and load necessary libraries and variables
-setup_parallel_cluster()
+.libPaths("~/R/library")
 
-# Create data frames to store the results
+# Register the doFuture parallel backend
+registerDoFuture()
+
+# Define the SLURM resources (adjust 'ncpus' as necessary)
+myslurm <- tweak(batchtools_slurm, resources = list("ncpus" = cores_per_node))
+plan(list(myslurm, multisession))
+
+# Create empty data frames to store the results
+raw_results <- data.frame(
+  n = integer(),
+  j = integer(),
+  method = character(),
+  ISE = numeric(),
+  stringsAsFactors = FALSE
+)
+
+
+# Capture the start time
+start_time <- Sys.time()
+
+# Parallel loop over the replications (RR), each node processes one set of RR values
+res <- foreach(r = RR, .combine = "rbind", 
+               .export = vars_to_export,
+               .packages = libraries_to_load) %dopar% {
+  # Set library paths within each worker node
+  .libPaths("~/R/library")
+  
+  # Load necessary libraries within each worker (sometimes required)
+  lapply(libraries_to_load, require, character.only = TRUE)
+  
+  # Initialize the cluster within the worker process
+  cl <- setup_parallel_cluster()
+  
+  local_raw_results <- data.frame(
+    n = integer(),
+    j = integer(),
+    method = character(),
+    ISE = numeric(),
+    stringsAsFactors = FALSE
+  )
+
+  # Loop over combinations of j, n, and method within each worker
+  for (j in JJ) {
+    for (n in NN) {
+      for (method in MM) {
+        XX_data <- XX(j, n) # Generate the observations
+        ISE_value <- ISE(XX_data, j, method) # Calculate ISE for the current replication
+        
+        # Store the result for this specific replication
+        local_raw_results <- rbind(
+          local_raw_results,
+          data.frame(
+            n = n,
+            j = j,
+            method = method,
+            ISE = ISE_value,
+            stringsAsFactors = FALSE
+          )
+        )
+      }
+    }
+  }
+  
+  # Stop the cluster
+  stopCluster(cl)
+  
+  # Return the raw results for this replication
+  return(local_raw_results)
+}
+
+# Combine results from all nodes
+raw_results <- res
+
+# Stop parallel execution
+plan(sequential)  # Ensure that the parallel plan stops once finished
+
+# Calculate the duration in minutes
+elapsed_time_minutes <- as.numeric(difftime(Sys.time(), start_time, units = "mins"))
+print(paste("Elapsed time:", round(elapsed_time_minutes, 2), "minutes"))
+
+# Save the raw results to a CSV file in the specified path
+raw_output_file <- file.path(path, "raw_ISE_results.csv")
+write.csv(raw_results, raw_output_file, row.names = FALSE)
+
+print("Raw results saved to raw_ISE_results.csv")
+
+#########################
+## Process the Results ##
+#########################
+
+# Create a data frame to store the summary results
 summary_results <- data.frame(
   n = integer(),
   j = integer(),
@@ -1131,43 +1273,15 @@ summary_results <- data.frame(
   stringsAsFactors = FALSE
 )
 
-raw_results <- data.frame(
-  n = integer(),
-  j = integer(),
-  method = character(),
-  ISE = numeric(),
-  stringsAsFactors = FALSE
-)
-
-# Capture the start time
-start_time <- Sys.time()
-
-# Loop over all combinations of j, n, and method in parallel
-results_list <- parLapply(cl, JJ, function(j) {
-  lapply(NN, function(n) {
-    lapply(MM, function(method) {
-      ISE_values <- numeric(length(RR)) # Initialize a vector to store ISE values for each replication
-      for (r in RR) {
-        XX_data <- XX(j, n) # Generate the observations
-        ISE_values[r] <- ISE(XX_data, j, method)
-      }
-      list(ISE_values = ISE_values, n = n, j = j, method = method)
-    })
-  })
-})
-
-# Stop the cluster
-stopCluster(cl)
-
-# Process the results
-for (j_results in results_list) {
-  for (n_results in j_results) {
-    for (result in n_results) {
-      ISE_values <- result$ISE_values
-      n <- result$n
-      j <- result$j
-      method <- result$method
+# Loop through the results to compute the summary statistics
+for (j in JJ) {
+  for (n in NN) {
+    for (method in MM) {
+      # Filter the raw results by j, n, and method
+      filtered_results <- raw_results %>%
+        filter(j == !!j, n == !!n, method == !!method)
       
+      ISE_values <- filtered_results$ISE
       mean_ISE <- mean(ISE_values)
       sd_ISE <- sd(ISE_values)
       median_ISE <- median(ISE_values)
@@ -1187,36 +1301,12 @@ for (j_results in results_list) {
           stringsAsFactors = FALSE
         )
       )
-      
-      # Store the raw results
-      for (ISE_value in ISE_values) {
-        raw_results <- rbind(
-          raw_results,
-          data.frame(
-            n = n,
-            j = j,
-            method = method,
-            ISE = ISE_value,
-            stringsAsFactors = FALSE
-          )
-        )
-      }
     }
   }
 }
-
-# Calculate the duration in minutes
-elapsed_time_minutes <- as.numeric(difftime(Sys.time(), start_time, units = "mins"))
-print(paste("Elapsed time:", round(elapsed_time_minutes, 2), "minutes"))
 
 # Save the summary results to a CSV file in the specified path
 summary_output_file <- file.path(path, "ISE_results.csv")
 write.csv(summary_results, summary_output_file, row.names = FALSE)
 
 print("Summary results saved to ISE_results.csv")
-
-# Save the raw results to a CSV file in the specified path
-raw_output_file <- file.path(path, "raw_ISE_results.csv")
-write.csv(raw_results, raw_output_file, row.names = FALSE)
-
-print("Raw results saved to raw_ISE_results.csv")
