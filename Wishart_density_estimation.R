@@ -1179,8 +1179,22 @@ ISE <- function(XX, j, method, tolerance = tol1) {
 # Register the doFuture parallel backend
 registerDoFuture()
 
-# Define the SLURM resources (adjust 'ncpus' as necessary)
-myslurm <- tweak(batchtools_slurm, resources = list("ncpus" = cores_per_node))
+resources_list <- list(
+  cpus_per_task = cores_per_node,  # Number of CPUs per task
+  mem = "240G",                    # Memory per node
+  walltime = "1:10:00",           # Maximum walltime
+  nodes = 2,                       # Number of nodes per job
+  partition = "compute"            # Partition name (adjust as needed)
+)
+
+# Tweak the batchtools_slurm with the custom template and resources
+myslurm <- tweak(
+  batchtools_slurm,
+  template = "slurm_template.tmpl",
+  resources = resources_list
+)
+
+# Set the plan for future
 plan(list(myslurm, multisession))
 
 # Create empty data frames to store the results
