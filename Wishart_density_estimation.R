@@ -1216,12 +1216,6 @@ res <- foreach(r = RR, .combine = "rbind",
   # Set library paths within each worker node
   .libPaths("~/R/library")
   
-  # Load necessary libraries within each worker (sometimes required)
-  lapply(libraries_to_load, require, character.only = TRUE)
-  
-  # Initialize the cluster within the worker process
-  cl <- setup_parallel_cluster()
-  
   local_raw_results <- data.frame(
     n = integer(),
     j = integer(),
