@@ -1180,11 +1180,11 @@ ISE <- function(XX, j, method, tolerance = tol1) {
 registerDoFuture()
 
 resources_list <- list(
-  cpus_per_task = cores_per_node,  # Number of CPUs per task
-  mem = "240G",                    # Memory per node
-  walltime = "1:10:00",           # Maximum walltime
-  nodes = 2,                       # Number of nodes per job
-  partition = "compute"            # Partition name (adjust as needed)
+  cpus_per_task = 63,
+  mem = "240G",
+  walltime = "1:10:00",
+  nodes = 2
+  # Omit 'partition' to let SLURM choose
 )
 
 # Tweak the batchtools_slurm with the custom template and resources
