@@ -1190,7 +1190,7 @@ resources_list <- list(
 # Tweak the batchtools_slurm with the custom template and resources
 myslurm <- tweak(
   batchtools_slurm,
-  template = "slurm_template.tmpl",
+  template = "batchtools.slurm.tmpl",
   resources = resources_list
 )
 
