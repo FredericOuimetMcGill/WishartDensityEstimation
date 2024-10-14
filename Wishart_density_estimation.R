@@ -1183,7 +1183,7 @@ resources_list <- list(
   cpus_per_task = cores_per_node,
   mem = "240G",
   walltime = "1:10:00",
-  nodes = 2
+  nodes = 1
   # Omit 'partition' to let SLURM choose
 )
 
