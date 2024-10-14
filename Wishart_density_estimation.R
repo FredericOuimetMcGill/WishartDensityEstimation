@@ -146,18 +146,6 @@ invisible(
 path <- getwd()
 # setwd(path)
 
-##############################
-## Parallelization on Nodes ##
-##############################
-
-resources_list <- list(
-  cpus_per_task = cores_per_node,
-  mem = "240G",
-  walltime = "28:00:00",
-  nodes = 1
-  # Omit 'partition' to let SLURM choose
-)
-
 ################
 ## Parameters ##
 ################
@@ -174,6 +162,18 @@ cores_per_node <- 63 # number of cores for each node in the super-computer
 
 tol1 <- 1e-2
 tol2 <- 1e-1
+
+##############################
+## Parallelization on Nodes ##
+##############################
+
+resources_list <- list(
+  cpus_per_task = cores_per_node,
+  mem = "240G",
+  walltime = "28:00:00",
+  nodes = 1
+  # Omit 'partition' to let SLURM choose
+)
 
 #######################
 ## Special functions ##
