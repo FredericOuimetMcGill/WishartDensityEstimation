@@ -1176,6 +1176,9 @@ ISE <- function(XX, j, method, tolerance = tol1) {
 
 .libPaths("~/R/library")
 
+# Disable the check for random number generation misuse in doFuture
+options(doFuture.rng.onMisuse = "ignore")
+
 # Register the doFuture parallel backend
 registerDoFuture()
 
@@ -1212,8 +1215,7 @@ start_time <- Sys.time()
 # Parallel loop over the replications (RR), each node processes one set of RR values
 res <- foreach(r = RR, .combine = "rbind", 
                .export = vars_to_export,
-               .packages = libraries_to_load,
-               .options.future = list(seed = TRUE)) %dopar% {
+               .packages = libraries_to_load) %dopar% {
   # Set a unique seed for each node (replication)
   set.seed(r)
   
