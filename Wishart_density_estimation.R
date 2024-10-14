@@ -50,6 +50,7 @@ vars_to_export <- c(
   "G",
   "ISE",
   "ISE_MC",
+  "ISE_value",
   "JJ",
   "LG",
   "LSCV",
@@ -63,6 +64,7 @@ vars_to_export <- c(
   "S3",
   "S4",
   "XX",
+  "XX_data",
   "XX_sample",
   "b_LG_test",
   "b_WK_test",
@@ -81,6 +83,7 @@ vars_to_export <- c(
   "hat_f",
   "integrand",
   "j",
+  "local_raw_results",
   "lmvgamma",
   "logm",
   "matrixcalc",
@@ -91,6 +94,7 @@ vars_to_export <- c(
   "n_test",
   "optimx",
   "path",
+  "raw_results",
   "rotation_matrix",
   "setup_parallel_cluster",
   "symmetrize",
@@ -1251,9 +1255,6 @@ res <- foreach(r = RR, .combine = "rbind",
       }
     }
   }
-  
-  # Stop the cluster
-  stopCluster(cl)
   
   # Return the raw results for this replication
   return(local_raw_results)
