@@ -1180,7 +1180,7 @@ ISE <- function(XX, j, method, tolerance = tol1) {
 registerDoFuture()
 
 resources_list <- list(
-  cpus_per_task = 63,
+  cpus_per_task = cores_per_node,
   mem = "240G",
   walltime = "1:10:00",
   nodes = 2
@@ -1205,7 +1205,6 @@ raw_results <- data.frame(
   ISE = numeric(),
   stringsAsFactors = FALSE
 )
-
 
 # Capture the start time
 start_time <- Sys.time()
