@@ -1213,6 +1213,9 @@ start_time <- Sys.time()
 res <- foreach(r = RR, .combine = "rbind", 
                .export = vars_to_export,
                .packages = libraries_to_load) %dopar% {
+  # Set a unique seed for each node (replication)
+  set.seed(r)
+  
   # Set library paths within each worker node
   .libPaths("~/R/library")
   
