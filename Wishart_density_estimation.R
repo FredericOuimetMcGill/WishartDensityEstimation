@@ -1212,7 +1212,8 @@ start_time <- Sys.time()
 # Parallel loop over the replications (RR), each node processes one set of RR values
 res <- foreach(r = RR, .combine = "rbind", 
                .export = vars_to_export,
-               .packages = libraries_to_load) %dopar% {
+               .packages = libraries_to_load,
+               .options.future = list(seed = TRUE)) %dopar% {
   # Set a unique seed for each node (replication)
   set.seed(r)
   
