@@ -1,0 +1,14 @@
+#!/bin/sh
+#SBATCH --job-name=doFuture-1
+#SBATCH --time=28:00:00
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=
+#SBATCH --mem=240G
+#SBATCH -o log/%x_%j_%A_%a.out
+#SBATCH --mail-user=frederic.ouimet.23@gmail.com
+#SBATCH --mail-type=ALL
+#SBATCH --output=message/%x_%j_%A_%a-result.txt
+#SBATCH --error=message/%x_%j_%A_%a-error.txt
+#SBATCH --exclusive
+module load StdEnv/2023 r/4.3.1
+Rscript -e 'batchtools::doJobCollection("/home/fouimet/WishartDensityEstimation/.future/20241014_001746-uOUCWR/doFuture-1_1194486482/jobs/jobb48aa00dbe12daa544342b8fb903291a.rds")'
