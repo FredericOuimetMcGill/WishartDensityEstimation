@@ -151,12 +151,12 @@ invisible(
 ## Set the path ##
 ##################
 
-path <- file.path(
-  "C://Users//fred1//Desktop//Github_WishartDensityEstimation",
-  fsep = .Platform$file.sep
-)
-# path <- getwd()
-setwd(path)
+# path <- file.path(
+#   "C://Users//fred1//Desktop//Github_WishartDensityEstimation",
+#   fsep = .Platform$file.sep
+# )
+path <- getwd()
+# setwd(path)
 
 ################
 ## Parameters ##
@@ -168,13 +168,13 @@ K <- 4 # fixed degree-of-freedom parameter
 
 h <- function(n) { n ^ 0.25 } # for h-block cross-validation
 
-MM <- list("WK","LG") # list of density estimation methods
-NN <- c(50, 100, 150, 200) # sample sizes
-II <- 1:2 # stationary density function indices (related to M)
-JJ <- 1:3 # stationary density function indices (related to Sigma)
+MM <- list("WK", "LG") # list of density estimation methods
+NN <- c(50) # sample sizes
+II <- 1:1 # stationary density function indices (related to M)
+JJ <- 1:1 # stationary density function indices (related to Sigma)
 RR <- 1:1 # replication indices
 
-cores_per_node <- 6 # number of cores for each node in the super-computer
+cores_per_node <- 63 # number of cores for each node in the super-computer
 
 tol1 <- 1e-1
 tol2 <- 1e-1
