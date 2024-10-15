@@ -191,7 +191,7 @@ rotation_matrix <- function(theta) {
   return(matrix(c(cos(theta), sin(theta), -sin(theta), cos(theta)), nrow = 2, ncol = 2))
 }
 
-# Construct X = rotation_matrix(theta) . diag(lambda1, lambda2) . rotation_matrix(theta)^T
+# Construct X = rotation_matrix(theta) . diag(lambda1, lambda2) . rotation_matrix(theta) ^ T
 
 construct_X <- function(theta, lambda1, lambda2) {
   R_theta <- rotation_matrix(theta)
@@ -397,7 +397,7 @@ f <- function(j, X) { # X is an SPD matrix of size d x d
 # # Tests if the target density f(j, X) integrates to 1 over all j in JJ
 # 
 # # Initialize parallel cluster and load necessary libraries and variables
-# setup_parallel_cluster()
+# cl <- setup_parallel_cluster()
 # 
 # # Start the timer
 # start_time <- Sys.time()
@@ -605,7 +605,7 @@ hat_f <- function(XX, S, b, method = "WK") {
 # }
 # 
 # # Initialize parallel cluster and load necessary libraries and variables
-# setup_parallel_cluster()
+# cl <- setup_parallel_cluster()
 # 
 # # Start the timer
 # start_time <- Sys.time()
@@ -741,7 +741,7 @@ LSCV <- function(XX, b, j, method, tolerance = tol1) {
 # for (method in c("WK", "LG")) {
 # 
 #   # Initialize parallel cluster and load necessary libraries and variables
-#   setup_parallel_cluster()
+#   cl <- setup_parallel_cluster()
 # 
 #   # Parallelize computation for all j's for the current method
 #   results <- parLapply(cl, JJ, function(j) {
@@ -858,7 +858,7 @@ LSCV_MC <- function(XX, b, jj, method) {
 # for (method in c("WK", "LG")) {
 # 
 #   # Initialize parallel cluster and load necessary libraries and variables
-#   setup_parallel_cluster()
+#   cl <- setup_parallel_cluster()
 # 
 #   # Parallelize computation for all j's for the current method
 #   results <- parLapply(cl, JJ, function(j) {
@@ -919,7 +919,7 @@ b_opt_MC <- function(XX, j, method) {
 # for (method in c("WK", "LG")) {
 # 
 #   # Initialize parallel cluster and load necessary libraries and variables
-#   setup_parallel_cluster()
+#   cl <- setup_parallel_cluster()
 # 
 #   # Parallelize computation for all j's for the current method
 #   results <- parLapply(cl, JJ, function(j) {
