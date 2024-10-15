@@ -20,7 +20,7 @@ require("tidyverse")          # for data manipulation and visualization
 require("writexl")            # to write output to Excel files
 
 ##############################
-## Parallelization on Cores ##
+## Parallelization on cores ##
 ##############################
 
 # Define the list of libraries to load on each cluster node
@@ -164,7 +164,7 @@ tol1 <- 1e-2
 tol2 <- 1e-1
 
 ##############################
-## Parallelization on Nodes ##
+## Parallelization on nodes ##
 ##############################
 
 resources_list <- list(
