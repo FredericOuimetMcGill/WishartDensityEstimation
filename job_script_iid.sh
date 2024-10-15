@@ -12,4 +12,4 @@
 #SBATCH --exclusive
 
 module load StdEnv/2023 r/4.3.1
-Rscript Wishart_density_estimation.R
+Rscript Wishart_density_estimation_iid.R
