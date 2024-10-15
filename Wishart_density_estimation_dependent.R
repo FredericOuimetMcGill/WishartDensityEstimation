@@ -20,9 +20,9 @@ require("parallel")           # for parallelization of calculations
 require("tidyverse")          # for data manipulation and visualization
 require("writexl")            # to write output to Excel files
 
-#####################
-## Parallelization ##
-#####################
+##############################
+## Parallelization on cores ##
+##############################
 
 # Define the list of libraries to load on each cluster node
 
@@ -1183,9 +1183,9 @@ plan(list(myslurm, multisession))
 
 # Create empty data frames to store the results
 raw_results <- data.frame(
-  n = integer(),
   i = integer(),
   j = integer(),
+  n = integer(),
   method = character(),
   ISE = numeric(),
   stringsAsFactors = FALSE
@@ -1205,9 +1205,9 @@ res <- foreach(r = RR, .combine = "rbind",
                  .libPaths("~/R/library")
                  
                  local_raw_results <- data.frame(
-                   n = integer(),
                    i = integer(),
                    j = integer(),
+                   n = integer(),
                    method = character(),
                    ISE = numeric(),
                    stringsAsFactors = FALSE
@@ -1225,9 +1225,9 @@ res <- foreach(r = RR, .combine = "rbind",
                          local_raw_results <- rbind(
                            local_raw_results,
                            data.frame(
-                             n = n,
                              i = i,
                              j = j,
+                             n = n,
                              method = method,
                              ISE = ISE_value,
                              stringsAsFactors = FALSE
@@ -1264,9 +1264,9 @@ print("Raw results saved to raw_ISE_dependent.csv")
 
 # Create a data frame to store the summary results
 summary_results <- data.frame(
-  n = integer(),
   i = integer(),
   j = integer(),
+  n = integer(),
   method = character(),
   mean_ISE = numeric(),
   sd_ISE = numeric(),
@@ -1280,6 +1280,7 @@ for (i in II) {
   for (j in JJ) {
     for (n in NN) {
       for (method in MM) {
+        # Filter the raw results by i, j, n, and method
         filtered_results <- raw_results %>%
           filter(i == !!i, j == !!j, n == !!n, method == !!method)
         
@@ -1293,9 +1294,9 @@ for (i in II) {
         summary_results <- rbind(
           summary_results,
           data.frame(
-            n = n,
             i = i,
             j = j,
+            n = n,
             method = method,
             mean_ISE = mean_ISE,
             sd_ISE = sd_ISE,
