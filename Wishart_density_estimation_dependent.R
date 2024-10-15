@@ -66,6 +66,7 @@ vars_to_export <- c(
   "G",
   "generate_VAR1_collection",
   "generate_WAR1",
+  "h",
   "hat_f",
   "II",
   "II_test",
@@ -174,7 +175,7 @@ II <- 1:1 # stationary density function indices (related to M)
 JJ <- 1:1 # stationary density function indices (related to Sigma)
 RR <- 1:1 # replication indices
 
-cores_per_node <- 63 # number of cores for each node in the super-computer
+cores_per_node <- 6 # number of cores for each node in the super-computer
 
 tol1 <- 1e-1
 tol2 <- 1e-1
@@ -309,8 +310,11 @@ XX <- function(i, j, K, n) {
 # XX(i = 1, j = 1, K = 5, n = 10)
 
 ##################################
-## Stationary density functions ##
+## Calculation of all Sigma_inf ##
 ##################################
+
+II_all <- 1:3 # all cases are needed here if II or JJ ever changes
+JJ_all <- 1:3 # all cases are needed here if II or JJ ever changes
 
 # Function to solve the Riccati equation Sigma_inf = M Sigma_inf M^T + Sigma
 solve_riccati <- function(M, Sigma, tol = 1e-8, max_iter = 1000) {
@@ -328,16 +332,16 @@ solve_riccati <- function(M, Sigma, tol = 1e-8, max_iter = 1000) {
 # Solve the Riccati equation for each combination of M_i and Sigma_j
 Sigma_inf_list <- list()
 
-for (i in II) {
-  for (j in JJ) {
+for (i in II_all) {
+  for (j in JJ_all) {
     # Store the result with key as just "ij"
     Sigma_inf_list[[paste0(i, j)]] <- solve_riccati(M_list[[i]], Sigma_list[[j]])
   }
 }
 
 # # Test all 9 combinations of i from 1 to 3, and j from 1 to 3
-# for (i in II) {
-#   for (j in JJ) {
+# for (i in II_all) {
+#   for (j in JJ_all) {
 #     # Get the Riccati solution and the matrices M_i and Sigma_j
 #     Sigma_inf_ij <- Sigma_inf_list[[paste0(i, j)]]
 #     M_i <- M_list[[i]]
@@ -362,6 +366,10 @@ for (i in II) {
 #     }
 #   }
 # }
+
+##################################
+## Stationary density functions ##
+##################################
 
 # Stationary densities
 f <- function(i, j, K, X) { # i and j define M_i and Sigma_j, K is degrees of freedom, X is an SPD matrix
@@ -712,66 +720,66 @@ LSCV <- function(XX, b, i, j, K, method, tolerance = tol1) {
   return(result$integral)
 }
 
-# Parameters for testing
-II_test <- 1:2
-JJ_test <- 1:3
-K_test <- 2
-n_test <- 10
-b_test <- 0.1
-
-# Initialize a matrix to store results for both methods
-results_matrix <- matrix(NA, nrow = length(II_test) * length(JJ_test), ncol = 4)
-results_matrix[, 1:2] <- as.matrix(expand.grid(II_test, JJ_test))
-colnames(results_matrix) <- c("i", "j", "WK LSCV", "LG LSCV")
-
-# Create a list of pairs in the same order as expand.grid(II_test, JJ_test)
-combinations <- lapply(1:nrow(expand.grid(II_test, JJ_test)), function(k) as.numeric(expand.grid(II_test, JJ_test)[k, ]))
-
-# Start the timer
-start_time <- Sys.time()
-
-# Loop over both methods
-for (method in c("WK", "LG")) {
-  
-  # Initialize parallel cluster and load necessary libraries and variables
-  cl <- setup_parallel_cluster()
-  
-  # Parallelize computation for all i and j combinations for the current method
-  results <- parLapply(cl, combinations, function(params) {
-    i <- params[[1]]
-    j <- params[[2]]
-    
-    cat("Testing LSCV for i =", i, ", j =", j, ", K =", K_test, "and method =", method, "\n")
-    
-    # Call the LSCV function for the combination of i, j, and K_test
-    result <- LSCV(XX = XX(i, j, K_test, n_test), b = b_test, i = i, j = j, K = K_test, method = method)
-    
-    cat("Result for i =", i, ", j =", j, ", K =", K_test, "and method =", method, ":\n", result, "\n\n")
-    return(result)
-  })
-  
-  # Store the results in the results_matrix
-  if (method == "WK") {
-    results_matrix[, 3] <- unlist(results)
-  } else if (method == "LG") {
-    results_matrix[, 4] <- unlist(results)
-  }
-  
-  # Stop the cluster after computation
-  stopCluster(cl)
-}
-
-# End the timer
-end_time <- Sys.time()
-
-# Calculate the elapsed time in minutes
-elapsed_time_minutes <- as.numeric(difftime(end_time, start_time, units = "mins"))
-
-# Print the results
-print(results_matrix)
-
-# Print the elapsed time in minutes
-cat("Elapsed time: ", round(elapsed_time_minutes, 2), "minutes\n")
+# # Parameters for testing
+# II_test <- 1:2
+# JJ_test <- 1:3
+# K_test <- 4
+# n_test <- 10
+# b_test <- 0.1
+# 
+# # Initialize a matrix to store results for both methods
+# results_matrix <- matrix(NA, nrow = length(II_test) * length(JJ_test), ncol = 4)
+# results_matrix[, 1:2] <- as.matrix(expand.grid(II_test, JJ_test))
+# colnames(results_matrix) <- c("i", "j", "WK LSCV", "LG LSCV")
+# 
+# # Create a list of pairs in the same order as expand.grid(II_test, JJ_test)
+# combinations <- lapply(1:nrow(expand.grid(II_test, JJ_test)), function(k) as.numeric(expand.grid(II_test, JJ_test)[k, ]))
+# 
+# # Start the timer
+# start_time <- Sys.time()
+# 
+# # Loop over both methods
+# for (method in c("WK", "LG")) {
+# 
+#   # Initialize parallel cluster and load necessary libraries and variables
+#   cl <- setup_parallel_cluster()
+# 
+#   # Parallelize computation for all i and j combinations for the current method
+#   results <- parLapply(cl, combinations, function(params) {
+#     i <- params[[1]]
+#     j <- params[[2]]
+# 
+#     cat("Testing LSCV for i =", i, ", j =", j, ", K =", K_test, "and method =", method, "\n")
+# 
+#     # Call the LSCV function for the combination of i, j, and K_test
+#     result <- LSCV(XX = XX(i, j, K_test, n_test), b = b_test, i = i, j = j, K = K_test, method = method)
+# 
+#     cat("Result for i =", i, ", j =", j, ", K =", K_test, "and method =", method, ":\n", result, "\n\n")
+#     return(result)
+#   })
+# 
+#   # Store the results in the results_matrix
+#   if (method == "WK") {
+#     results_matrix[, 3] <- unlist(results)
+#   } else if (method == "LG") {
+#     results_matrix[, 4] <- unlist(results)
+#   }
+# 
+#   # Stop the cluster after computation
+#   stopCluster(cl)
+# }
+# 
+# # End the timer
+# end_time <- Sys.time()
+# 
+# # Calculate the elapsed time in minutes
+# elapsed_time_minutes <- as.numeric(difftime(end_time, start_time, units = "mins"))
+# 
+# # Print the results
+# print(results_matrix)
+# 
+# # Print the elapsed time in minutes
+# cat("Elapsed time: ", round(elapsed_time_minutes, 2), "minutes\n")
 
 #################################################
 ## Criterion to optimize (Monte Carlo version) ##
@@ -854,7 +862,7 @@ LSCV_MC <- function(XX, b, ii, jj, K, method) {
 # # Parameters for testing
 # II_test <- 1:2
 # JJ_test <- 1:3
-# K_test <- 2
+# K_test <- 4
 # n_test <- 100
 # b_test <- 0.1
 # 
@@ -871,31 +879,31 @@ LSCV_MC <- function(XX, b, ii, jj, K, method) {
 # 
 # # Loop over both methods
 # for (method in c("WK", "LG")) {
-#   
+# 
 #   # Initialize parallel cluster and load necessary libraries and variables
 #   cl <- setup_parallel_cluster()
-#   
+# 
 #   # Parallelize computation for all i and j combinations for the current method
 #   results <- parLapply(cl, combinations, function(params) {
 #     i <- params[[1]]
 #     j <- params[[2]]
-#     
+# 
 #     cat("Testing LSCV_MC for i =", i, ", j =", j, ", K =", K_test, "and method =", method, "\n")
-#     
-#     # Call the LSCV_MC function for the combination of i, j, and K
+# 
+#     # Call the LSCV_MC function for the combination of i, j, and K_test
 #     result <- LSCV_MC(XX = XX(i, j, K_test, n_test), b = b_test, ii = i, jj = j, K = K_test, method = method)
-#     
+# 
 #     cat("Result for i =", i, ", j =", j, ", K =", K_test, "and method =", method, ":\n", result, "\n\n")
 #     return(result)
 #   })
-#   
+# 
 #   # Store the results in the results_matrix
 #   if (method == "WK") {
 #     results_matrix[, 3] <- unlist(results)
 #   } else if (method == "LG") {
 #     results_matrix[, 4] <- unlist(results)
 #   }
-#   
+# 
 #   # Stop the cluster after computation
 #   stopCluster(cl)
 # }
