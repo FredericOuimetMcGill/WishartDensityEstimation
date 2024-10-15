@@ -166,6 +166,8 @@ d <- 2 # width of the square matrices
 delta <- 0.1 # lower bound on the eigenvalues of SPD matrices in LSCV
 K <- 4 # fixed degree-of-freedom parameter
 
+h <- function(n) { n ^ 0.25 } # for h-block cross-validation
+
 MM <- list("WK","LG") # list of density estimation methods
 NN <- c(50, 100, 150, 200) # sample sizes
 II <- 1:2 # stationary density function indices (related to M)
@@ -786,7 +788,12 @@ LSCV_MC <- function(XX, b, ii, jj, K, method) {
   sum2 <- 0
   
   if (method == "WK") {
+    second_term <- 0 # initialization of second term using h-block cross-validation
+    
     for (i in 1:n) {
+      n_h <- 0 # number of indices j for a given i in h-block cross-validation
+      sum2 <- 0 # for h-block cross-validation
+      
       for (j in 1:n) {
         Xi <- XX[[i]]
         Xj <- XX[[j]]
@@ -803,16 +810,22 @@ LSCV_MC <- function(XX, b, ii, jj, K, method) {
         
         sum1 <- sum1 + term2 * term3 * term4
         
-        if (i != j) {
+        if (abs(j - i) > h(n)) { # h-block cross-validation
           sum2 <- sum2 + LaplacesDemon::dwishart(Xi, nu = 1/b + d + 1, S = b * Xj)
+          n_h <- n_h + 1 # update the number of indices j for a given i in h-block cross-validation
         }
       }
+      second_term <- second_term + 2 * sum2 / (n * n_h) # second term update for h-block cross-validation
     }
     first_term <- (2 ^ (d / b) * b ^ (-r_d / 2)) * sum1 / (n ^ 2)
-    second_term <- 2 * sum2 / (n * (n - 1))
     
   } else if (method == "LG") {
+    second_term <- 0 # initialization of second term using h-block cross-validation
+    
     for (i in 1:n) {
+      n_h <- 0 # number of indices j for a given i in h-block cross-validation
+      sum2 <- 0 # for h-block cross-validation
+      
       for (j in 1:n) {
         Xi <- XX[[i]]
         Xj <- XX[[j]]
@@ -822,13 +835,14 @@ LSCV_MC <- function(XX, b, ii, jj, K, method) {
         etr_term <- exp(tr((-Xi_log ^ 2 - Xj_log ^ 2 + (Xi_log + Xj_log) ^ 2 / 2) / (2 * b)))
         sum1 <- sum1 + etr_term
         
-        if (i != j) {
+        if (abs(j - i) > h(n)) { # h-block cross-validation
           sum2 <- sum2 + G(Xj_log - Xi_log, b)
+          n_h <- n_h + 1 # update the number of indices j for a given i in h-block cross-validation
         }
       }
+      second_term <- second_term + 2 * sum2 / (n * n_h) # second term update for h-block cross-validation
     }
     first_term <- sum1 / ((2 * pi * b) ^ (r_d / 2) * 2 ^ (d / 2) * n ^ 2)
-    second_term <- 2 * sum2 / (n * (n - 1))
     
   } else {
     stop("Invalid method. Should be 'WK' or 'LG'.")
