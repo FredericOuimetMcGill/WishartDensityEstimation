@@ -186,7 +186,7 @@ tol2 <- 1e-1
 resources_list <- list(
   cpus_per_task = cores_per_node,
   mem = "240G",
-  walltime = "28:00:00",
+  walltime = "2:00:00",
   nodes = 1
   # Omit 'partition' to let SLURM choose
 )
