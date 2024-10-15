@@ -1202,7 +1202,7 @@ registerDoFuture()
 # Tweak the batchtools_slurm with the custom template and resources
 myslurm <- tweak(
   batchtools_slurm,
-  template = "batchtools.slurm.tmpl",
+  template = "batchtools.slurm.iid.tmpl",
   resources = resources_list
 )
 
@@ -1276,10 +1276,10 @@ elapsed_time_minutes <- as.numeric(difftime(Sys.time(), start_time, units = "min
 print(paste("Elapsed time:", round(elapsed_time_minutes, 2), "minutes"))
 
 # Save the raw results to a CSV file in the specified path
-raw_output_file <- file.path(path, "raw_ISE_results.csv")
+raw_output_file <- file.path(path, "raw_ISE_results_iid.csv")
 write.csv(raw_results, raw_output_file, row.names = FALSE)
 
-print("Raw results saved to raw_ISE_results.csv")
+print("Raw results saved to raw_ISE_results_iid.csv")
 
 #########################
 ## Process the Results ##
@@ -1330,7 +1330,7 @@ for (j in JJ) {
 }
 
 # Save the summary results to a CSV file in the specified path
-summary_output_file <- file.path(path, "ISE_results.csv")
+summary_output_file <- file.path(path, "ISE_results_iid.csv")
 write.csv(summary_results, summary_output_file, row.names = FALSE)
 
-print("Summary results saved to ISE_results.csv")
+print("Summary results saved to ISE_results_iid.csv")
