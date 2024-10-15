@@ -1211,8 +1211,8 @@ plan(list(myslurm, multisession))
 
 # Create empty data frames to store the results
 raw_results <- data.frame(
-  n = integer(),
   j = integer(),
+  n = integer(),
   method = character(),
   ISE = numeric(),
   stringsAsFactors = FALSE
@@ -1232,8 +1232,8 @@ res <- foreach(r = RR, .combine = "rbind",
   .libPaths("~/R/library")
   
   local_raw_results <- data.frame(
-    n = integer(),
     j = integer(),
+    n = integer(),
     method = character(),
     ISE = numeric(),
     stringsAsFactors = FALSE
@@ -1250,8 +1250,8 @@ res <- foreach(r = RR, .combine = "rbind",
         local_raw_results <- rbind(
           local_raw_results,
           data.frame(
-            n = n,
             j = j,
+            n = n,
             method = method,
             ISE = ISE_value,
             stringsAsFactors = FALSE
@@ -1269,7 +1269,7 @@ res <- foreach(r = RR, .combine = "rbind",
 raw_results <- res
 
 # Stop parallel execution
-plan(sequential)  # Ensure that the parallel plan stops once finished
+plan(sequential)
 
 # Calculate the duration in minutes
 elapsed_time_minutes <- as.numeric(difftime(Sys.time(), start_time, units = "mins"))
@@ -1287,8 +1287,8 @@ print("Raw results saved to raw_ISE_results_iid.csv")
 
 # Create a data frame to store the summary results
 summary_results <- data.frame(
-  n = integer(),
   j = integer(),
+  n = integer(),
   method = character(),
   mean_ISE = numeric(),
   sd_ISE = numeric(),
@@ -1315,8 +1315,8 @@ for (j in JJ) {
       summary_results <- rbind(
         summary_results,
         data.frame(
-          n = n,
           j = j,
+          n = n,
           method = method,
           mean_ISE = mean_ISE,
           sd_ISE = sd_ISE,
