@@ -1282,7 +1282,7 @@ write.csv(raw_results, raw_output_file, row.names = FALSE)
 print("Raw results saved to raw_ISE_results_iid.csv")
 
 #########################
-## Process the Results ##
+## Process the results ##
 #########################
 
 # Create a data frame to store the summary results
