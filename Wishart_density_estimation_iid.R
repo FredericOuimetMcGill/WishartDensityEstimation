@@ -153,14 +153,14 @@ path <- getwd()
 d <- 2 # width of the square matrices
 delta <- 0.1 # lower bound on the eigenvalues of SPD matrices in LSCV
 
-MM <- list("WK","LG") # list of density estimation methods
-NN <- c(100, 200) # sample sizes
-JJ <- 1:6 # target density function indices
-RR <- 1:10 # replication indices
+MM <- list("WK", "LG") # list of density estimation methods
+NN <- c(50) # sample sizes
+JJ <- 1:1 # target density function indices
+RR <- 1:1 # replication indices
 
 cores_per_node <- 63 # number of cores for each node in the super-computer
 
-tol1 <- 1e-2
+tol1 <- 1e-1
 tol2 <- 1e-1
 
 ##############################
@@ -170,7 +170,7 @@ tol2 <- 1e-1
 resources_list <- list(
   cpus_per_task = cores_per_node,
   mem = "240G",
-  walltime = "28:00:00",
+  walltime = "2:00:00",
   nodes = 1
   # Omit 'partition' to let SLURM choose
 )
