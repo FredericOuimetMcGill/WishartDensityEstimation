@@ -1242,8 +1242,9 @@ res <- foreach(r = RR, .combine = "rbind",
   # Loop over combinations of j, n, and method within each worker
   for (j in JJ) {
     for (n in NN) {
+      XX_data <- XX(j, n) # Generate the observations
+
       for (method in MM) {
-        XX_data <- XX(j, n) # Generate the observations
         ISE_value <- ISE(XX_data, j, method) # Calculate ISE for the current replication
         
         # Store the result for this specific replication
