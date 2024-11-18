@@ -175,7 +175,7 @@ II <- 1:3 # stationary density function indices (related to M)
 JJ <- 1:3 # stationary density function indices (related to Sigma)
 RR <- 1:10 # replication indices
 
-cores_per_node <- 63 # number of cores for each node in the super-computer
+cores_per_node <- 39 # number of cores for each node in the super-computer
 
 tol1 <- 1e-2
 tol2 <- 1e-1

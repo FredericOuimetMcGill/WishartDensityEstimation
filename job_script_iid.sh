@@ -1,8 +1,8 @@
 #!/bin/sh
 
-#SBATCH --time=2:00:00
+#SBATCH --time=24:00:00
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=63
+#SBATCH --ntasks-per-node=39
 #SBATCH --mem=240G
 #SBATCH -o log/%x_%j.out
 #SBATCH --mail-user=frederic.ouimet.23@gmail.com
@@ -10,6 +10,7 @@
 #SBATCH --output=message/%x_%j-result.txt
 #SBATCH --error=message/%x_%j-error.txt
 #SBATCH --exclusive
+#SBATCH --account=def-cgenest
 
 module load StdEnv/2023 r/4.3.1
 Rscript Wishart_density_estimation_iid.R
