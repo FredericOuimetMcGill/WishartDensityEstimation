@@ -78,6 +78,7 @@ vars_to_export <- c(
   "d",
   "delta",
   "dmatrixbeta_typeII",
+  "elapsed_time_seconds", # (***)
   "expm",
   "f",
   "hat_f",
@@ -100,6 +101,7 @@ vars_to_export <- c(
   "setup_parallel_cluster",
   "symmetrize",
   "test_estimator_integral",
+  "time_seconds", # (***)
   "tol1",
   "tol2",
   "vars_to_export",
@@ -1249,6 +1251,7 @@ res <- foreach(r = RR, .combine = "rbind",
         start_time <- Sys.time() # Start the timer (***)
         ISE_value <- ISE(XX_data, j, method) # Calculate ISE for the current replication
         end_time <- Sys.time() # End the timer (***)
+        elapsed_time_seconds <- as.numeric(difftime(end_time, start_time, units = "secs")) # (***)
         
         # Store the result for this specific replication
         local_raw_results <- rbind(
