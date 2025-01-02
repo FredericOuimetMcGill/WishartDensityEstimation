@@ -61,6 +61,7 @@ vars_to_export <- c(
   "d",
   "delta",
   "dmatrixbeta_typeII",
+  "elapsed_time_seconds", # (***)
   "expm",
   "f",
   "G",
@@ -110,6 +111,7 @@ vars_to_export <- c(
   "solve_riccati",
   "symmetrize",
   "test_estimator_integral",
+  "time_seconds", # (***)
   "tol1",
   "tol2",
   "vars_to_export",
@@ -1196,6 +1198,7 @@ raw_results <- data.frame(
   n = integer(),
   method = character(),
   ISE = numeric(),
+  time_seconds = numeric(), # New column for elapsed time (***)
   stringsAsFactors = FALSE
 )
 
@@ -1225,10 +1228,13 @@ res <- foreach(r = RR, .combine = "rbind",
                  for (i in II) {
                    for (j in JJ) {
                      for (n in NN) {
-		       XX_data <- XX(i, j, K, n)
+                       XX_data <- XX(i, j, K, n)
 
                        for (method in MM) {
-                         ISE_value <- ISE(XX_data, i, j, K, method)
+                         start_time <- Sys.time() # Start the timer (***)
+                         ISE_value <- ISE(XX_data, i, j, K, method) # Calculate ISE for the current replication
+                         end_time <- Sys.time() # End the timer (***)
+                         elapsed_time_seconds <- as.numeric(difftime(end_time, start_time, units = "secs")) # (***)
                          
                          # Store the result for this specific replication
                          local_raw_results <- rbind(
@@ -1239,6 +1245,7 @@ res <- foreach(r = RR, .combine = "rbind",
                              n = n,
                              method = method,
                              ISE = ISE_value,
+                             time_seconds = elapsed_time_seconds, # Save elapsed time (***)
                              stringsAsFactors = FALSE
                            )
                          )
@@ -1281,6 +1288,7 @@ summary_results <- data.frame(
   sd_ISE = numeric(),
   median_ISE = numeric(),
   IQR_ISE = numeric(),
+  mean_time_seconds = numeric(), # New column for mean elapsed time (***)
   stringsAsFactors = FALSE
 )
 
@@ -1294,10 +1302,13 @@ for (i in II) {
           filter(i == !!i, j == !!j, n == !!n, method == !!method)
         
         ISE_values <- filtered_results$ISE
+        elapsed_times <- filtered_results$time_seconds # Extract elapsed times (***)
+        
         mean_ISE <- mean(ISE_values)
         sd_ISE <- sd(ISE_values)
         median_ISE <- median(ISE_values)
         IQR_ISE <- IQR(ISE_values)
+        mean_time_seconds <- mean(elapsed_times) # Calculate mean elapsed time (***)
         
         # Store the summary results
         summary_results <- rbind(
@@ -1311,6 +1322,7 @@ for (i in II) {
             sd_ISE = sd_ISE,
             median_ISE = median_ISE,
             IQR_ISE = IQR_ISE,
+            mean_time_seconds = mean_time_seconds, # Save mean elapsed time (***)
             stringsAsFactors = FALSE
           )
         )
