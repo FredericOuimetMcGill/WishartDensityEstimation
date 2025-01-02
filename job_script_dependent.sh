@@ -1,8 +1,8 @@
 #!/bin/sh
 
-#SBATCH --time=72:00:00
+#SBATCH --time=144:00:00
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=39
+#SBATCH --ntasks-per-node=63
 #SBATCH --mem=240G
 #SBATCH -o log/%x_%j.out
 #SBATCH --mail-user=frederic.ouimet.23@gmail.com

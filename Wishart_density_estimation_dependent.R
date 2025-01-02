@@ -170,14 +170,14 @@ K <- 4 # fixed degree-of-freedom parameter
 h <- function(n) { n ^ 0.25 } # for h-block cross-validation
 
 MM <- list("WK", "LG") # list of density estimation methods
-NN <- c(100, 200) # sample sizes
+NN <- c(100, 200, 400, 800) # sample sizes
 II <- 1:3 # stationary density function indices (related to M)
 JJ <- 1:3 # stationary density function indices (related to Sigma)
-RR <- 1:10 # replication indices
+RR <- 1:100 # replication indices
 
-cores_per_node <- 39 # number of cores for each node in the super-computer
+cores_per_node <- 63 # number of cores for each node in the super-computer
 
-tol1 <- 1e-2
+tol1 <- 1e-1
 tol2 <- 1e-1
 
 ##############################
@@ -187,7 +187,7 @@ tol2 <- 1e-1
 resources_list <- list(
   cpus_per_task = cores_per_node,
   mem = "240G",
-  walltime = "30:00:00",
+  walltime = "24:00:00",
   nodes = 1
   # Omit 'partition' to let SLURM choose
 )
