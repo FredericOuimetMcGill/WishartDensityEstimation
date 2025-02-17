@@ -57,3 +57,4 @@ Loading required package: tidyverse
 ✖ purrr::when()         masks foreach::when()
 ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
 Loading required package: writexl
+slurmstepd: error: *** JOB 38963833 ON nc30111 CANCELLED AT 2025-01-02T02:27:20 ***

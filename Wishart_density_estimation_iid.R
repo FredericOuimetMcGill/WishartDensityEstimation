@@ -156,9 +156,9 @@ d <- 2 # width of the square matrices
 delta <- 0.1 # lower bound on the eigenvalues of SPD matrices in LSCV
 
 MM <- list("WK", "LG") # list of density estimation methods
-NN <- c(300, 1000) # sample sizes
+NN <- c(100, 200) # sample sizes
 JJ <- 1:6 # target density function indices
-RR <- 1:4 # replication indices
+RR <- 101:200 # replication indices
 
 cores_per_node <- 63 # number of cores for each node in the super-computer
 
@@ -172,7 +172,7 @@ tol2 <- 1e-1
 resources_list <- list(
   cpus_per_task = cores_per_node,
   mem = "240G",
-  walltime = "22:00:00",
+  walltime = "4:30:00",
   nodes = 1
   # Omit 'partition' to let SLURM choose
 )
@@ -249,20 +249,12 @@ XX <- function(j, n) {
                 },
                 "3" = {
                   lapply(1:n, function(x) {
-                    if (runif(1) < 0.5) {
-                      LaplacesDemon::rinvwishart(7, S1)
-                    } else {
-                      LaplacesDemon::rinvwishart(8, S2)
-                    }
+                    LaplacesDemon::rinvwishart(5, S2)
                   })
                 },
                 "4" = {
                   lapply(1:n, function(x) {
-                    if (runif(1) < 0.5) {
-                      LaplacesDemon::rinvwishart(8, S3)
-                    } else {
-                      LaplacesDemon::rinvwishart(9, S4)
-                    }
+                    LaplacesDemon::rinvwishart(8, S4)
                   })
                 },
                 "5" = {
@@ -378,16 +370,16 @@ f <- function(j, X) { # X is an SPD matrix of size d x d
     res <- 0.5 * LaplacesDemon::dwishart(X, 5, S3) + 0.5 * LaplacesDemon::dwishart(X, 6, S4)
   } else if (j == 3) {
     # Case when j = 3
-    res <- 0.5 * LaplacesDemon::dinvwishart(X, 7, S1) + 0.5 * LaplacesDemon::dinvwishart(X, 8, S2)
+    res <- LaplacesDemon::dinvwishart(X, 5, S2)
   } else if (j == 4) {
     # Case when j = 4
-    res <- 0.5 * LaplacesDemon::dinvwishart(X, 8, S3) + 0.5 * LaplacesDemon::dinvwishart(X, 9, S4)
+    res <- LaplacesDemon::dinvwishart(X, 8, S4)
   } else if (j == 5) {
     # Case when j = 5
-    res <- dmatrixbeta_typeII(X, 2, 2)
+    res <- dmatrixbeta_typeII(X, 2, 4)
   } else if (j == 6) {
     # Case when j = 6
-    res <- dmatrixbeta_typeII(X, 3, 3)
+    res <- dmatrixbeta_typeII(X, 3, 5)
   } else {
     # Default case if j is not 1, 2, 3, 4, 5, or 6
     warning("Invalid value of j. Should be 1, 2, 3, 4, 5, or 6.")

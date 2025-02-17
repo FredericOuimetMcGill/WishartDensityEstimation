@@ -57,3 +57,7 @@ Loading required package: tidyverse
 ✖ purrr::when()         masks foreach::when()
 ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
 Loading required package: writexl
+Error: Log file '/home/fouimet/WishartDensityEstimation/.future/20250101_195619-2SmUBm/doFuture-6_1584158412/logs/jobfe647bce8d2c716ee333209ed4051d10.log' for job with id 1 not available
+Execution halted
+Error : Log file '/home/fouimet/WishartDensityEstimation/.future/20250101_195619-2SmUBm/doFuture-58_277774551/logs/job9e70f630a16a7ca1c0a41ed060461cbd.log' for job with id 1 not available
+slurmstepd: error: *** JOB 38963628 ON nc10812 CANCELLED AT 2025-01-02T02:30:18 ***

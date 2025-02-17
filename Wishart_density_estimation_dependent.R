@@ -175,7 +175,7 @@ MM <- list("WK", "LG") # list of density estimation methods
 NN <- c(100, 200, 400, 800) # sample sizes
 II <- 1:3 # stationary density function indices (related to M)
 JJ <- 1:3 # stationary density function indices (related to Sigma)
-RR <- 1:100 # replication indices
+RR <- 1:1 # replication indices
 
 cores_per_node <- 63 # number of cores for each node in the super-computer
 
@@ -189,7 +189,7 @@ tol2 <- 1e-1
 resources_list <- list(
   cpus_per_task = cores_per_node,
   mem = "240G",
-  walltime = "24:00:00",
+  walltime = "60:00:00",
   nodes = 1
   # Omit 'partition' to let SLURM choose
 )
