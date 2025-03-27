@@ -2,7 +2,7 @@
 ## Density estimation on the space of positive definite matrices using Wishart asymmetric kernels ##
 ####################################################################################################
 
-## Written by Frederic Ouimet (October 2024)
+## Written by Frederic Ouimet (March 2025)
 
 require("CholWishart")        # for the multivariate gamma function
 require("cubature")           # for integrals
@@ -16,6 +16,8 @@ require("matrixcalc")         # for functions like is.positive.definite
 require("matrixsampling")     # for the matrix-type-II Beta distribution
 require("optimx")             # for improved bandwidth optimization
 require("parallel")           # for parallelization of calculations
+require("Rcpp")               # for C++ functions
+require("RcppEigen")          # for C++ array/matrix algebra
 require("tidyverse")          # for data manipulation and visualization
 require("writexl")            # to write output to Excel files
 
@@ -38,6 +40,8 @@ libraries_to_load <- c(
   "matrixsampling",
   "optimx",
   "parallel",
+  "Rcpp",
+  "RcppEigen",
   "tidyverse",
   "writexl"
 )
@@ -142,11 +146,14 @@ invisible(
 ##################
 
 # path <- file.path(
-#   "C://Users//fred1//Dropbox//Ouimet_Genest_projects//GOR_2024_Wishart_asym_kernels//_simulations", 
+#   "C://Users//fred1//Dropbox//Ouimet_Genest_projects//GMOR_2024_Wishart_asym_kernels//_simulations", 
 #   fsep = .Platform$file.sep
 # )
 path <- getwd()
 # setwd(path)
+
+sourceCpp("3d_array_inversion.cpp")
+sourceCpp("ratio_conjugation.cpp")
 
 ################
 ## Parameters ##
@@ -158,7 +165,7 @@ delta <- 0.1 # lower bound on the eigenvalues of SPD matrices in LSCV
 MM <- list("WK", "LG") # list of density estimation methods
 NN <- c(100, 200) # sample sizes
 JJ <- 1:6 # target density function indices
-RR <- 101:200 # replication indices
+RR <- 1:4 # replication indices
 
 cores_per_node <- 63 # number of cores for each node in the super-computer
 
@@ -228,73 +235,45 @@ S4 <- matrix(c(1, -0.5, -0.5, 1), nrow = 2)
 # Random generation of observations
 
 XX <- function(j, n) { 
-  res <- switch(as.character(j),
-                "1" = {
-                  lapply(1:n, function(x) {
-                    if (runif(1) < 0.5) {
-                      LaplacesDemon::rwishart(4, S1)
-                    } else {
-                      LaplacesDemon::rwishart(5, S2)
-                    }
-                  })
-                },
-                "2" = {
-                  lapply(1:n, function(x) {
-                    if (runif(1) < 0.5) {
-                      LaplacesDemon::rwishart(5, S3)
-                    } else {
-                      LaplacesDemon::rwishart(6, S4)
-                    }
-                  })
-                },
-                "3" = {
-                  lapply(1:n, function(x) {
-                    LaplacesDemon::rinvwishart(5, S2)
-                  })
-                },
-                "4" = {
-                  lapply(1:n, function(x) {
-                    LaplacesDemon::rinvwishart(6, S3)
-                  })
-                },
-                "5" = {
-                  lapply(1:n, function(x) {
-                    X <- matrixsampling::rmatrixbeta(1, d, 2, 4, def = 2, checkSymmetry = TRUE)[,,1]
-                    symmetrize(as.matrix(solve(diag(1, d) - X) %*% X))
-                  })
-                },
-                "6" = {
-                  lapply(1:n, function(x) {
-                    X <- matrixsampling::rmatrixbeta(1, d, 3, 5, def = 2, checkSymmetry = TRUE)[,,1]
-                    symmetrize(as.matrix(solve(diag(1, d) - X) %*% X))
-                  })
-                },
-                {
-                  warning("Invalid value of j. Should be 1, 2, 3, 4, 5, or 6.")
-                  NULL
-                }
+  res <- switch(
+    as.character(j),
+    "1" = {
+      bern <- as.numeric(runif(n) < 0.5)
+      arr1 <- stats::rWishart(n, 4, S1)
+      arr2 <- stats::rWishart(n, 5, S2)
+      arr1 * array(bern, dim = c(d, d, n)) + arr2 * array(1 - bern, dim = c(d, d, n))
+    },
+    "2" = {
+      bern <- as.numeric(runif(n) < 0.5)
+      arr1 <- stats::rWishart(n, 5, S3)
+      arr2 <- stats::rWishart(n, 6, S4)
+      arr1 * array(bern, dim = c(d, d, n)) + arr2 * array(1 - bern, dim = c(d, d, n))
+    },
+    "3" = {
+      arr <- stats::rWishart(n, 5, S2)
+      invert_array(arr)
+    },
+    "4" = {
+      arr <- stats::rWishart(n, 6, S3)
+      invert_array(arr)
+    },
+    "5" = {
+      arr1 <- stats::rWishart(n, 2 * 2, diag(d))
+      arr2 <- stats::rWishart(n, 2 * 4, diag(d))
+      conjugated_ratio(arr1, arr2)
+    },
+    "6" = {
+      arr1 <- stats::rWishart(n, 2 * 3, diag(d))
+      arr2 <- stats::rWishart(n, 2 * 5, diag(d))
+      conjugated_ratio(arr1, arr2)
+    },
+    {
+      warning("Invalid value of j. Should be 1, 2, 3, 4, 5, or 6.")
+      NULL
+    }
   )
   return(res)
 }
-
-# # Define the sample size
-# n_test <- 2
-# 
-# # Loop over all j in JJ and test the XX function
-# for (j in JJ) {
-#   cat("Testing XX for j =", j, "\n")
-#   observations <- XX(j, n_test)
-#   
-#   # Print all generated observations
-#   for (i in 1:n_test) {
-#     cat("Observation", i, ":\n")
-#     print(observations[[i]])
-#     cat("\n")
-#   }
-#   
-#   cat("Total number of observations generated:", length(observations), "\n")
-#   cat("--------------------------------------------\n")
-# }
 
 ##############################
 ## Target density functions ##
@@ -569,8 +548,8 @@ LG <- function(X, b, S) {
 
 hat_f <- function(XX, S, b, method = "WK") {
   estimator <- switch(method,
-                      "WK" = mean(sapply(XX, function(X) LaplacesDemon::dwishart(X, 1/b + d + 1, b * S))),
-                      "LG" = mean(sapply(XX, function(X) LG(X, b, S))),
+                      "WK" = mean(apply(XX, 3, function(X) LaplacesDemon::dwishart(X, 1/b + d + 1, b * S))),
+                      "LG" = mean(apply(XX, 3, function(X) LG(X, b, S))),
                       warning("Invalid method. Should be 'WK' or 'LG'.")
   )
   return(estimator)
@@ -775,8 +754,9 @@ LSCV <- function(XX, b, j, method, tolerance = tol1) {
 # Least Squares Cross Validation (LSCV) criterion (Monte Carlo version)
 
 LSCV_MC <- function(XX, b, jj, method) {
-  n <- length(XX)
-  d <- nrow(XX[[1]])
+  dims <- dim(XX)
+  n <- dims[3]
+  d <- dims[1]
   r_d <- d * (d + 1) / 2
   
   sum1 <- 0
@@ -785,8 +765,8 @@ LSCV_MC <- function(XX, b, jj, method) {
   if (method == "WK") {
     for (i in 1:n) {
       for (j in 1:n) {
-        Xi <- XX[[i]]
-        Xj <- XX[[j]]
+        Xi <- XX[,,i]
+        Xj <- XX[,,j]
         Sij <- Xi + Xj
         
         # Avoid numerical errors due to Stirling's formula
@@ -811,8 +791,8 @@ LSCV_MC <- function(XX, b, jj, method) {
   } else if (method == "LG") {
     for (i in 1:n) {
       for (j in 1:n) {
-        Xi <- XX[[i]]
-        Xj <- XX[[j]]
+        Xi <- XX[,,i]
+        Xj <- XX[,,j]
         Xi_log <- logm(Xi)
         Xj_log <- logm(Xj)
         
@@ -1125,49 +1105,10 @@ b_opt_MC_grid <- function(XX, j, method, return_LSCV_MC = FALSE) {
 ## Integrated Squared Errors (ISE) ##
 #####################################
 
-ISE <- function(XX, j, method) {
-  # Obtain the optimal bandwidth from the grid search
-  b_opt <- b_opt_MC_grid(XX, j, method)
-  
-  # Set the number of Monte Carlo samples
-  n_MC <- 10000
-  
-  # Define the integration limits (polar coordinates)
-  lower_limit <- c(0, delta, delta)
-  upper_limit <- c(2 * pi, 1 / delta, 1 / delta)
-  
-  # Calculate the volume of the integration region
-  vol <- prod(upper_limit - lower_limit)
-  
-  # Sample uniformly from the integration region
-  theta_samples   <- runif(n_MC, min = lower_limit[1], max = upper_limit[1])
-  lambda1_samples <- runif(n_MC, min = lower_limit[2], max = upper_limit[2])
-  lambda2_samples <- runif(n_MC, min = lower_limit[3], max = upper_limit[3])
-  
-  # Compute the integrand at each sampled point
-  # The integrand is: (hat_f(XX, S, b_opt, method) - f(j, S))^2 * (|lambda1 - lambda2| / 4)
-  integrand_vals <- numeric(n_MC)
-  for (i in 1:n_MC) {
-    theta   <- theta_samples[i]
-    lambda1 <- lambda1_samples[i]
-    lambda2 <- lambda2_samples[i]
+ISE <- function(XX, j, method, tolerance = tol1) {
+  b_opt_MC_grid_value <- b_opt_MC_grid(XX, j, method)
     
-    # Construct the SPD matrix using polar coordinates
-    S <- construct_X(theta, lambda1, lambda2)
-    
-    # Compute squared difference between estimated and target densities
-    diff_squared <- (hat_f(XX, S, b_opt, method) - f(j, S))^2
-    
-    # Jacobian for the transformation in polar coordinates
-    jacobian_val <- abs(lambda1 - lambda2) / 4
-    
-    integrand_vals[i] <- diff_squared * jacobian_val
-  }
-  
-  # Monte Carlo estimate of the integral
-  integral_estimate <- vol * mean(integrand_vals)
-  
-  return(integral_estimate)
+  return(LSCV(XX, b_opt_MC_grid_value, j, method, tolerance))
 }
 
 # # Tests the ISE function over all j in JJ for both WK and LG methods
