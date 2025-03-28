@@ -6,7 +6,7 @@ using namespace Rcpp;
 // with dimensions p x p x n, and returns a 3D array of the same size
 // where each p x p slice is the inverse of the corresponding input matrix.
 // [[Rcpp::export]]
-NumericVector invert_array(NumericVector arr) {
+NumericVector invert_3d_array(NumericVector arr) {
     // Get the dimensions of the array
     IntegerVector dims = arr.attr("dim");
     if (dims.size() != 3)

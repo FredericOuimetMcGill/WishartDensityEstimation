@@ -107,7 +107,7 @@ vars_to_export <- c(
   "test_estimator_integral",
   "time_seconds", # (***)
   "tol1",
-  "tol2",
+  "tol_test",
   "vars_to_export",
   "writexl"
 )
@@ -124,6 +124,13 @@ setup_parallel_cluster <- function() {
   # Load necessary libraries on each cluster node
   invisible(clusterEvalQ(cl, {
     lapply(libraries_to_load, library, character.only = TRUE)
+  }))
+  
+  # Each parallel worker must compile & load these C++ functions
+  invisible(clusterEvalQ(cl, {
+    sourceCpp("3d_array_inversion.cpp")
+    sourceCpp("3d_array_ratio_conjugation.cpp")
+    sourceCpp("3d_array_symmetrization.cpp")
   }))
   
   # Export all necessary objects, functions, and parameters to the worker nodes
@@ -153,7 +160,8 @@ path <- getwd()
 # setwd(path)
 
 sourceCpp("3d_array_inversion.cpp")
-sourceCpp("ratio_conjugation.cpp")
+sourceCpp("3d_array_ratio_conjugation.cpp")
+sourceCpp("3d_array_symmetrization.cpp")
 
 ################
 ## Parameters ##
@@ -163,14 +171,13 @@ d <- 2 # width of the square matrices
 delta <- 0.1 # lower bound on the eigenvalues of SPD matrices in LSCV
 
 MM <- list("WK", "LG") # list of density estimation methods
-NN <- c(100, 200) # sample sizes
+NN <- c(10, 20) # sample sizes
 JJ <- 1:6 # target density function indices
-RR <- 1:4 # replication indices
+RR <- 1:1 # replication indices
 
-cores_per_node <- 63 # number of cores for each node in the super-computer
+cores_per_node <- 31 # number of cores for each node in the super-computer
 
 tol1 <- 1e-1
-tol2 <- 1e-1
 
 ##############################
 ## Parallelization on nodes ##
@@ -206,7 +213,7 @@ construct_X <- function(theta, lambda1, lambda2) {
   R_theta <- rotation_matrix(theta)
   diag_lambda <- diag(c(lambda1, lambda2))
   X <- R_theta %*% diag_lambda %*% t(R_theta)
-  return((X + t(X)) / 2)  # Ensure the matrix is symmetric
+  return(symmetrize(X))
 }
 
 # Bandwidth sequence based on the method
@@ -234,45 +241,45 @@ S4 <- matrix(c(1, -0.5, -0.5, 1), nrow = 2)
 
 # Random generation of observations
 
-XX <- function(j, n) { 
-  res <- switch(
-    as.character(j),
-    "1" = {
-      bern <- as.numeric(runif(n) < 0.5)
-      arr1 <- stats::rWishart(n, 4, S1)
-      arr2 <- stats::rWishart(n, 5, S2)
-      arr1 * array(bern, dim = c(d, d, n)) + arr2 * array(1 - bern, dim = c(d, d, n))
-    },
-    "2" = {
-      bern <- as.numeric(runif(n) < 0.5)
-      arr1 <- stats::rWishart(n, 5, S3)
-      arr2 <- stats::rWishart(n, 6, S4)
-      arr1 * array(bern, dim = c(d, d, n)) + arr2 * array(1 - bern, dim = c(d, d, n))
-    },
-    "3" = {
-      arr <- stats::rWishart(n, 5, S2)
-      invert_array(arr)
-    },
-    "4" = {
-      arr <- stats::rWishart(n, 6, S3)
-      invert_array(arr)
-    },
-    "5" = {
-      arr1 <- stats::rWishart(n, 2 * 2, diag(d))
-      arr2 <- stats::rWishart(n, 2 * 4, diag(d))
-      conjugated_ratio(arr1, arr2)
-    },
-    "6" = {
-      arr1 <- stats::rWishart(n, 2 * 3, diag(d))
-      arr2 <- stats::rWishart(n, 2 * 5, diag(d))
-      conjugated_ratio(arr1, arr2)
-    },
-    {
-      warning("Invalid value of j. Should be 1, 2, 3, 4, 5, or 6.")
-      NULL
-    }
-  )
-  return(res)
+XX <- function(j, n) {
+  if (j == 1) {
+    bern <- as.numeric(runif(n) < 0.5)
+    arr1 <- stats::rWishart(n, 4, S1)
+    arr2 <- stats::rWishart(n, 5, S2)
+    out <- arr1 * array(rep(bern, each = d * d), dim = c(d, d, n)) +
+      arr2 * array(rep(1 - bern, each = d * d), dim = c(d, d, n))
+    symmetrize_3d_array(out)
+    
+  } else if (j == 2) {
+    bern <- as.numeric(runif(n) < 0.5)
+    arr1 <- stats::rWishart(n, 5, S3)
+    arr2 <- stats::rWishart(n, 6, S4)
+    out <- arr1 * array(rep(bern, each = d * d), dim = c(d, d, n)) +
+      arr2 * array(rep(1 - bern, each = d * d), dim = c(d, d, n))
+    symmetrize_3d_array(out)
+    
+  } else if (j == 3) {
+    arr <- stats::rWishart(n, 5, S2)
+    symmetrize_3d_array(invert_3d_array(arr))
+    
+  } else if (j == 4) {
+    arr <- stats::rWishart(n, 6, S3)
+    symmetrize_3d_array(invert_3d_array(arr))
+    
+  } else if (j == 5) {
+    arr1 <- stats::rWishart(n, 2 * 2, diag(d))
+    arr2 <- stats::rWishart(n, 2 * 4, diag(d))
+    symmetrize_3d_array(conjugated_ratio_3d_array(arr1, arr2))
+    
+  } else if (j == 6) {
+    arr1 <- stats::rWishart(n, 2 * 3, diag(d))
+    arr2 <- stats::rWishart(n, 2 * 5, diag(d))
+    symmetrize_3d_array(conjugated_ratio_3d_array(arr1, arr2))
+    
+  } else {
+    warning("Invalid value of j. Should be 1, 2, 3, 4, 5, or 6.")
+    NULL
+  }
 }
 
 ##############################
@@ -294,9 +301,10 @@ dmatrixbeta_typeII <- function(X, a, b) { # X is an SPD matrix of size d x d, an
 
 # # Tests if dmatrixbeta_typeII(X, a, b) integrates to 1
 # 
-# # Define the test parameters for the matrix-type-II Beta distribution
-# a_test <- 2  # Test value for a
-# b_test <- 4  # Test value for b
+# # Parameters for testing
+# a_test <- 2
+# b_test <- 4
+# tol_test <- 1e-3
 # 
 # # Start the timer
 # start_time <- Sys.time()
@@ -324,7 +332,7 @@ dmatrixbeta_typeII <- function(X, a, b) { # X is an SPD matrix of size d x d, an
 # upper_limit_test <- c(2 * pi, Inf, Inf)
 # 
 # # Perform the numerical integration using adaptIntegrate from the cubature package
-# result_test <- adaptIntegrate(integrand, lowerLimit = lower_limit_test, upperLimit = upper_limit_test, tol = tol1)
+# result_test <- adaptIntegrate(integrand, lowerLimit = lower_limit_test, upperLimit = upper_limit_test, tol = tol_test)
 # 
 # # End the timer
 # end_time <- Sys.time()
@@ -360,7 +368,6 @@ f <- function(j, X) { # X is an SPD matrix of size d x d
     # Case when j = 6
     res <- dmatrixbeta_typeII(X, 3, 5)
   } else {
-    # Default case if j is not 1, 2, 3, 4, 5, or 6
     warning("Invalid value of j. Should be 1, 2, 3, 4, 5, or 6.")
     res <- NULL
   }
@@ -368,6 +375,8 @@ f <- function(j, X) { # X is an SPD matrix of size d x d
 }
 
 # # Tests if the target density f(j, X) integrates to 1 over all j in JJ
+# 
+# tol_test <- 1e-3 # Test value for the tolerance
 # 
 # # Initialize parallel cluster and load necessary libraries and variables
 # cl <- setup_parallel_cluster()
@@ -392,7 +401,7 @@ f <- function(j, X) { # X is an SPD matrix of size d x d
 #   upper_limit <- c(2 * pi, Inf, Inf)
 # 
 #   # Perform the numerical integration using the cubature package
-#   result <- adaptIntegrate(integrand, lowerLimit = lower_limit, upperLimit = upper_limit, tol = tol1)
+#   result <- adaptIntegrate(integrand, lowerLimit = lower_limit, upperLimit = upper_limit, tol = tol_test)
 # 
 #   cat("Result for j =", j, ":", result$integral, "\n")
 #   return(result$integral)
@@ -411,13 +420,13 @@ f <- function(j, X) { # X is an SPD matrix of size d x d
 # colnames(results_matrix) <- c("Density", "Integral")
 # 
 # # Calculate the elapsed time in minutes
-# elapsed_time_minutes <- as.numeric(difftime(end_time, start_time, units = "mins"))
+# elapsed_time_minutes <- as.numeric(difftime(end_time, start_time, units = "secs"))
 # 
 # # Print the results as a 6x2 matrix
 # print(results_matrix)
 # 
 # # Print the elapsed time in minutes
-# cat("Elapsed time: ", round(elapsed_time_minutes, 2), "minutes\n")
+# cat("Elapsed time: ", round(elapsed_time_minutes, 2), "seconds\n")
 
 #########################
 ## Log-Gaussian kernel ##
@@ -431,6 +440,8 @@ G <- function (Y, b) { # b > 0, Y > 0 is a d x d symmetric matrix
 }
 
 # # Tests if G integrates to 1
+# 
+# tol_test <- 1e-3 # Test value for the tolerance
 # 
 # # Start the timer
 # start_time <- Sys.time()
@@ -451,7 +462,7 @@ G <- function (Y, b) { # b > 0, Y > 0 is a d x d symmetric matrix
 # upper_limit <- c(Inf, Inf, Inf)
 # 
 # # Perform the numerical integration using the cubature package
-# result <- adaptIntegrate(integrand, lowerLimit = lower_limit, upperLimit = upper_limit, tol = tol1)
+# result <- adaptIntegrate(integrand, lowerLimit = lower_limit, upperLimit = upper_limit, tol = tol_test)
 # 
 # # End the timer
 # end_time <- Sys.time()
@@ -500,9 +511,10 @@ LG <- function(X, b, S) {
 
 # # Tests if LG integrates to 1
 # 
-# # Example matrix X (must be symmetric positive definite) and value for b
+# # Parameters for testing
 # X_test <- matrix(c(2, 0.5, 0.5, 1), nrow = 2)
 # b_test <- 1
+# tol_test <- 1e-3
 # 
 # # Start the timer
 # start_time <- Sys.time()
@@ -526,7 +538,7 @@ LG <- function(X, b, S) {
 # upper_limit <- c(2 * pi, Inf, Inf)
 # 
 # # Perform the numerical integration using the cubature package
-# result <- adaptIntegrate(integrand, lowerLimit = lower_limit, upperLimit = upper_limit, tol = tol1)
+# result <- adaptIntegrate(integrand, lowerLimit = lower_limit, upperLimit = upper_limit, tol = tol_test)
 # 
 # # End the timer
 # end_time <- Sys.time()
@@ -562,18 +574,19 @@ hat_f <- function(XX, S, b, method = "WK") {
 # n_LG_test <- 2
 # b_WK_test <- 0.1
 # b_LG_test <- 1
+# tol_test <- 1e-3
 # 
 # # Generalized integrand function for both WK and LG methods
 # integrand <- function(vars, XX_sample, bandwidth, method) {
 #   # Construct the SPD matrix
 #   S <- construct_X(vars[1], vars[2], vars[3])
-#   
+# 
 #   # Estimate the density using the chosen method (WK or LG)
 #   density_value <- hat_f(XX_sample, S, bandwidth, method)
-#   
+# 
 #   # Calculate the Jacobian
 #   jacobian_value <- abs(vars[2] - vars[3]) / 4
-#   
+# 
 #   return(density_value * jacobian_value)
 # }
 # 
@@ -586,21 +599,21 @@ hat_f <- function(XX, S, b, method = "WK") {
 # # Run the integral computation in parallel for all 6 target densities
 # results <- parLapply(cl, JJ, function(j) {
 #   cat("Calculating integrals for j =", j, "\n")
-#   
+# 
 #   # Generate a sample of SPD matrices for the given j
 #   XX_sample_WK <- XX(j, n_WK_test)
 #   XX_sample_LG <- XX(j, n_LG_test)
-#   
+# 
 #   # Perform the numerical integration for the WK method
 #   lower_limit <- c(0, 0, 0)
 #   upper_limit <- c(2 * pi, Inf, Inf)
 #   result_WK <- adaptIntegrate(function(vars) integrand(vars, XX_sample_WK, b_WK_test, "WK"),
-#                               lowerLimit = lower_limit, upperLimit = upper_limit, tol = tol1)
-#   
+#                               lowerLimit = lower_limit, upperLimit = upper_limit, tol = tol_test)
+# 
 #   # Perform the numerical integration for the LG method
 #   result_LG <- adaptIntegrate(function(vars) integrand(vars, XX_sample_LG, b_LG_test, "LG"),
-#                               lowerLimit = lower_limit, upperLimit = upper_limit, tol = tol1)
-#   
+#                               lowerLimit = lower_limit, upperLimit = upper_limit, tol = tol_test)
+# 
 #   cat("Result for j =", j, ":", "WK =", result_WK$integral, ", LG =", result_LG$integral, "\n")
 #   return(c(j, result_WK$integral, result_LG$integral))
 # })
@@ -636,17 +649,17 @@ hat_f <- function(XX, S, b, method = "WK") {
 # # Run the integral computation for all 6 target densities sequentially
 # results <- lapply(JJ, function(j) {
 #   cat("Calculating WK integral for j =", j, "\n")
-#   
+# 
 #   # Generate a sample of SPD matrices for the given j
 #   XX_sample <- XX(j, n_test)
-#   
+# 
 #   # Analytical calculation for the WK method
 #   integral_WK <- {
 #     numerator <- CholWishart::mvgamma(1 / (2 * b_WK_test), d)
 #     denominator <- (2 * b_WK_test) ^ (d * (d + 1) / 2) * CholWishart::mvgamma(1 / (2 * b_WK_test) + (d + 1) / 2, d)
 #     numerator / denominator
 #   }
-#   
+# 
 #   cat("Result for j =", j, "WK =", integral_WK, "\n")
 #   return(c(j, integral_WK))
 # })
