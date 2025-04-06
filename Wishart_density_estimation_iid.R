@@ -1125,49 +1125,10 @@ b_opt_MC_grid <- function(XX, j, method, return_LSCV_MC = FALSE) {
 ## Integrated Squared Errors (ISE) ##
 #####################################
 
-ISE <- function(XX, j, method) {
-  # Obtain the optimal bandwidth from the grid search
-  b_opt <- b_opt_MC_grid(XX, j, method)
-  
-  # Set the number of Monte Carlo samples
-  n_MC <- 10000
-  
-  # Define the integration limits (polar coordinates)
-  lower_limit <- c(0, delta, delta)
-  upper_limit <- c(2 * pi, 1 / delta, 1 / delta)
-  
-  # Calculate the volume of the integration region
-  vol <- prod(upper_limit - lower_limit)
-  
-  # Sample uniformly from the integration region
-  theta_samples   <- runif(n_MC, min = lower_limit[1], max = upper_limit[1])
-  lambda1_samples <- runif(n_MC, min = lower_limit[2], max = upper_limit[2])
-  lambda2_samples <- runif(n_MC, min = lower_limit[3], max = upper_limit[3])
-  
-  # Compute the integrand at each sampled point
-  # The integrand is: (hat_f(XX, S, b_opt, method) - f(j, S))^2 * (|lambda1 - lambda2| / 4)
-  integrand_vals <- numeric(n_MC)
-  for (i in 1:n_MC) {
-    theta   <- theta_samples[i]
-    lambda1 <- lambda1_samples[i]
-    lambda2 <- lambda2_samples[i]
+ISE <- function(XX, j, method, tolerance = tol1) {
+  b_opt_MC_grid_value <- b_opt_MC_grid(XX, j, method)
     
-    # Construct the SPD matrix using polar coordinates
-    S <- construct_X(theta, lambda1, lambda2)
-    
-    # Compute squared difference between estimated and target densities
-    diff_squared <- (hat_f(XX, S, b_opt, method) - f(j, S))^2
-    
-    # Jacobian for the transformation in polar coordinates
-    jacobian_val <- abs(lambda1 - lambda2) / 4
-    
-    integrand_vals[i] <- diff_squared * jacobian_val
-  }
-  
-  # Monte Carlo estimate of the integral
-  integral_estimate <- vol * mean(integrand_vals)
-  
-  return(integral_estimate)
+  return(LSCV(XX, b_opt_MC_grid_value, j, method, tolerance))
 }
 
 # # Tests the ISE function over all j in JJ for both WK and LG methods
