@@ -1,4 +1,0 @@
-socket cluster with 63 nodes on host ‘localhost’
-[1] "Elapsed time: 1.15 minutes"
-[1] "Summary results saved to ISE_results.csv"
-[1] "Raw results saved to raw_ISE_results.csv"
