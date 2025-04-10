@@ -52,6 +52,7 @@ vars_to_export <- c(
   "ISE_MC",
   "ISE_value",
   "JJ",
+  "LCV",
   "LG",
   "LSCV",
   "LSCV_MC",
@@ -68,7 +69,9 @@ vars_to_export <- c(
   "XX_sample",
   "b_LG_test",
   "b_WK_test",
+  "b_opt_LCV",
   "b_opt_MC",
+  "b_opt_LCV_grid",
   "b_opt_MC_grid",
   "b_test",
   "compute_ISE",
@@ -158,7 +161,7 @@ delta <- 0.1 # lower bound on the eigenvalues of SPD matrices in LSCV
 MM <- list("WK", "LG") # list of density estimation methods
 NN <- c(100, 200) # sample sizes
 JJ <- 1:6 # target density function indices
-RR <- 101:200 # replication indices
+RR <- 1:4 # replication indices
 
 cores_per_node <- 63 # number of cores for each node in the super-computer
 
@@ -172,7 +175,7 @@ tol2 <- 1e-1
 resources_list <- list(
   cpus_per_task = cores_per_node,
   mem = "240G",
-  walltime = "4:30:00",
+  walltime = "4:00:00",
   nodes = 1
   # Omit 'partition' to let SLURM choose
 )
@@ -768,6 +771,21 @@ LSCV <- function(XX, b, j, method, tolerance = tol1) {
 # # Print the elapsed time in minutes
 # cat("Elapsed time: ", round(elapsed_time_minutes, 2), "minutes\n")
 
+# Likelihood Cross Validation (LCV) criterion
+
+LCV <- function(XX, b, method) {
+  n <- length(XX)
+  lcv_values <- numeric(n)
+  
+  for (i in 1:n) {
+    XX_minus_i <- XX[-i]
+    density_estimate <- hat_f(XX_minus_i, XX[[i]], b, method)
+    lcv_values[i] <- log(density_estimate)
+  }
+  
+  return(mean(lcv_values))
+}
+
 #################################################
 ## Criterion to optimize (Monte Carlo version) ##
 #################################################
@@ -889,6 +907,17 @@ LSCV_MC <- function(XX, b, jj, method) {
 ## Optimal bandwidth ##
 #######################
 
+# Optimizes the bandwidth using the LCV criterion
+
+b_opt_LCV <- function(XX, method) {
+  optimize(
+    function(b) -LCV(XX, b, method),
+    interval = c(min(BB(method)), max(BB(method)))
+  )$minimum
+}
+
+# Optimizes the bandwidth using the Monte Carlo version of LSCV
+
 b_opt_MC <- function(XX, j, method) {
   optimize(
     function(b) LSCV_MC(XX, b, j, method), 
@@ -953,6 +982,40 @@ b_opt_MC <- function(XX, j, method) {
 ## Optimal bandwidth (parallel grid version) ##
 ###############################################
 
+# Optimal bandwidth (parallel grid version) using the Leave-One-Out Likelihood Cross-Validation (LCV) criterion
+
+b_opt_LCV_grid <- function(XX, method, return_LCV = FALSE) {
+  # Generate grid points from the bandwidth sequence provided by BB() for the given method
+  b_grid <- BB(method)
+  
+  # Set up a parallel cluster to distribute the computation
+  cl <- setup_parallel_cluster()
+  
+  # Compute the LCV criterion for each candidate bandwidth in parallel
+  LCV_values <- parSapply(cl, b_grid, function(b) {
+    LCV(XX, b, method)
+  })
+  
+  # Stop the parallel cluster after computation is complete
+  stopCluster(cl)
+  
+  # Identify the index corresponding to the candidate with the maximum LCV value
+  max_index <- which.max(LCV_values)
+  
+  # Extract the optimal bandwidth and its associated LCV value from the grid
+  b_opt_value <- b_grid[max_index]
+  max_LCV_value <- LCV_values[max_index]
+  
+  # Return the optimal bandwidth or the corresponding LCV value based on return_LCV flag
+  if (return_LCV) {
+    return(max_LCV_value)
+  } else {
+    return(b_opt_value)
+  }
+}
+
+# Optimal bandwidth (parallel grid version) using the Monte Carlo version of the LSCV criterion
+
 b_opt_MC_grid <- function(XX, j, method, return_LSCV_MC = FALSE) {
   
   # Generate grid points based on the method's bandwidth sequence
@@ -983,6 +1046,7 @@ b_opt_MC_grid <- function(XX, j, method, return_LSCV_MC = FALSE) {
     return(b_opt_value)
   }
 }
+
 # # Tests the b_opt_MC_grid function over all j in JJ for both WK and LG methods
 
 # # Parameters for testing
@@ -1126,9 +1190,9 @@ b_opt_MC_grid <- function(XX, j, method, return_LSCV_MC = FALSE) {
 #####################################
 
 ISE <- function(XX, j, method, tolerance = tol1) {
-  b_opt_MC_grid_value <- b_opt_MC_grid(XX, j, method)
+  b_opt_LCV_grid_value <- b_opt_LCV_grid(XX, method)
     
-  return(LSCV(XX, b_opt_MC_grid_value, j, method, tolerance))
+  return(LSCV(XX, b_opt_LCV_grid_value, j, method, tolerance))
 }
 
 # # Tests the ISE function over all j in JJ for both WK and LG methods
