@@ -161,12 +161,12 @@ delta <- 0.1 # lower bound on the eigenvalues of SPD matrices in LSCV
 MM <- list("WK", "LG") # list of density estimation methods
 NN <- c(100, 200) # sample sizes
 JJ <- 1:6 # target density function indices
-RR <- 1:4 # replication indices
+RR <- 1:10 # replication indices
 
 cores_per_node <- 63 # number of cores for each node in the super-computer
 
-tol1 <- 1e-1
-tol2 <- 1e-1
+tol1 <- 1e-2
+tol2 <- 1e-2
 
 ##############################
 ## Parallelization on nodes ##
@@ -175,7 +175,7 @@ tol2 <- 1e-1
 resources_list <- list(
   cpus_per_task = cores_per_node,
   mem = "240G",
-  walltime = "4:00:00",
+  walltime = "20:00:00",
   nodes = 1
   # Omit 'partition' to let SLURM choose
 )
@@ -1190,9 +1190,9 @@ b_opt_MC_grid <- function(XX, j, method, return_LSCV_MC = FALSE) {
 #####################################
 
 ISE <- function(XX, j, method, tolerance = tol1) {
-  b_opt_LCV_grid_value <- b_opt_LCV_grid(XX, method)
+  b_opt_MC_grid_value <- b_opt_MC_grid(XX, j, method)
     
-  return(LSCV(XX, b_opt_LCV_grid_value, j, method, tolerance))
+  return(LSCV(XX, b_opt_MC_grid_value, j, method, tolerance))
 }
 
 # # Tests the ISE function over all j in JJ for both WK and LG methods
