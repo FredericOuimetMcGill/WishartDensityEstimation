@@ -114,7 +114,7 @@ vars_to_export <- c(
 # Sets up a parallel cluster, loads necessary libraries, and exports required variables globally
 
 setup_parallel_cluster <- function() {
-  num_cores <<- detectCores() - 1
+  num_cores <<- detectCores()
   cl <<- makeCluster(num_cores)
   
   # Export the list of libraries to the worker nodes
