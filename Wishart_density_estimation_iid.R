@@ -161,12 +161,12 @@ delta <- 0.1 # lower bound on the eigenvalues of SPD matrices in LSCV
 MM <- list("WK", "LG") # list of density estimation methods
 NN <- c(100, 200) # sample sizes
 JJ <- 1:6 # target density function indices
-RR <- 1:10 # replication indices
+RR <- 1:1 # replication indices
 
-cores_per_node <- 63 # number of cores for each node in the super-computer
+cores_per_node <- 64 # number of cores for each node in the super-computer
 
-tol1 <- 1e-2
-tol2 <- 1e-2
+tol1 <- 1e-1
+tol2 <- 1e-1
 
 ##############################
 ## Parallelization on nodes ##
@@ -697,27 +697,61 @@ hat_f <- function(XX, S, b, method = "WK") {
 
 # Least Squares Cross Validation (LSCV) criterion (exact version)
 
-LSCV <- function(XX, b, j, method, tolerance = tol1) {
-  integrand <- function(vars) {
-    # Construct SPD matrix S
-    S <- construct_X(vars[1], vars[2], vars[3])
+# LSCV <- function(XX, b, j, method, tolerance = tol1) {
+#   integrand <- function(vars) {
+#     # Construct SPD matrix S
+#     S <- construct_X(vars[1], vars[2], vars[3])
+#     
+#     diff_squared <- (hat_f(XX, S, b, method) - f(j, S)) ^ 2
+#     jacobian_value <- abs(vars[2] - vars[3]) / 4
+#     
+#     # Return the product of diff_squared and the Jacobian factor
+#     return(diff_squared * jacobian_value)
+#   }
+#   
+#   # Define the limits of integration
+#   lower_limit <- c(0, delta, delta)
+#   upper_limit <- c(2 * pi, 1 / delta, 1 / delta)
+#   
+#   # Perform the numerical integration using the cubature package
+#   result <- adaptIntegrate(integrand, lowerLimit = lower_limit, upperLimit = upper_limit, tol = tolerance)
+#   
+#   # Return the result of the integral
+#   return(result$integral)
+# }
+
+LSCV_MC_integral <- function(XX, b, j, method) {
+  # Total number of Monte Carlo samples
+  n_MC_total <- ceiling(1000 / cores_per_node) * cores_per_node
+  n_MC_per_core <- n_MC_total / cores_per_node  # guaranteed to be an integer
+  
+  # Start parallel cluster
+  cl <- makeCluster(cores_per_node)
+  clusterExport(cl, varlist = c("construct_X", "hat_f", "f", "XX", "b", "j", "method", "delta"), envir = environment())
+  
+  # Perform parallel MC estimation with local sampling
+  estimates <- parLapply(cl, 1:cores_per_node, function(core_id) {
+    set.seed(123 + core_id)  # Optional: different seed per core
+    theta_vals <- runif(n_MC_per_core, min = 0, max = 2 * pi)
+    lambda1_vals <- runif(n_MC_per_core, min = delta, max = 1 / delta)
+    lambda2_vals <- runif(n_MC_per_core, min = delta, max = 1 / delta)
     
-    diff_squared <- (hat_f(XX, S, b, method) - f(j, S)) ^ 2
-    jacobian_value <- abs(vars[2] - vars[3]) / 4
-    
-    # Return the product of diff_squared and the Jacobian factor
-    return(diff_squared * jacobian_value)
-  }
+    sapply(1:n_MC_per_core, function(i) {
+      S <- construct_X(theta_vals[i], lambda1_vals[i], lambda2_vals[i])
+      diff_squared <- (hat_f(XX, S, b, method) - f(j, S))^2
+      jacobian_value <- abs(lambda1_vals[i] - lambda2_vals[i]) / 4
+      return(diff_squared * jacobian_value)
+    })
+  })
   
-  # Define the limits of integration
-  lower_limit <- c(0, delta, delta)
-  upper_limit <- c(2 * pi, 1 / delta, 1 / delta)
+  stopCluster(cl)
   
-  # Perform the numerical integration using the cubature package
-  result <- adaptIntegrate(integrand, lowerLimit = lower_limit, upperLimit = upper_limit, tol = tolerance)
+  # Aggregate results
+  estimates_vec <- unlist(estimates)
+  volume <- 2 * pi * (1 / delta - delta)^2
+  result <- mean(estimates_vec) * volume
   
-  # Return the result of the integral
-  return(result$integral)
+  return(result)
 }
 
 # # Tests the LSCV function (exact version) over all j in JJ for both WK and LG methods
@@ -1190,9 +1224,12 @@ b_opt_MC_grid <- function(XX, j, method, return_LSCV_MC = FALSE) {
 #####################################
 
 ISE <- function(XX, j, method, tolerance = tol1) {
-  b_opt_MC_grid_value <- b_opt_MC_grid(XX, j, method)
-    
-  return(LSCV(XX, b_opt_MC_grid_value, j, method, tolerance))
+  if (method == "WK") {
+    return(b_opt_MC_grid(XX, j, method, TRUE))
+  } else {
+    b_opt_MC_grid_value <- b_opt_MC_grid(XX, j, method)
+    return(LSCV_MC_integral(XX, b_opt_MC_grid_value, j, method))
+  }
 }
 
 # # Tests the ISE function over all j in JJ for both WK and LG methods
