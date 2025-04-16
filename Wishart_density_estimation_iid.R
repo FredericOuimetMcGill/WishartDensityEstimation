@@ -94,8 +94,9 @@ vars_to_export <- c(
   "matrixsampling",
   "method",
   "n_LG_test",
-  "n_WK_test",
+  "n_MC_per_core",
   "n_test",
+  "n_WK_test",
   "optimx",
   "path",
   "raw_results",
@@ -114,7 +115,7 @@ vars_to_export <- c(
 # Sets up a parallel cluster, loads necessary libraries, and exports required variables globally
 
 setup_parallel_cluster <- function() {
-  num_cores <<- detectCores()
+  num_cores <<- detectCores() - 1
   cl <<- makeCluster(num_cores)
   
   # Export the list of libraries to the worker nodes
@@ -161,7 +162,7 @@ delta <- 0.1 # lower bound on the eigenvalues of SPD matrices in LSCV
 MM <- list("WK", "LG") # list of density estimation methods
 NN <- c(100, 200) # sample sizes
 JJ <- 1:6 # target density function indices
-RR <- 1:1 # replication indices
+RR <- 1:4 # replication indices
 
 cores_per_node <- 64 # number of cores for each node in the super-computer
 
@@ -175,7 +176,7 @@ tol2 <- 1e-1
 resources_list <- list(
   cpus_per_task = cores_per_node,
   mem = "240G",
-  walltime = "20:00:00",
+  walltime = "3:00:00",
   nodes = 1
   # Omit 'partition' to let SLURM choose
 )
@@ -209,7 +210,7 @@ construct_X <- function(theta, lambda1, lambda2) {
 
 BB <- function(method) {
   if (method == "WK") {
-    return(seq(0.02, 2, length.out = cores_per_node))  # BB_WK sequence
+    return(seq(0.02, 1, length.out = cores_per_node))  # BB_WK sequence
   } else if (method == "LG") {
     return(seq(0.02, 2, length.out = cores_per_node))  # BB_LG sequence
   } else {
@@ -725,9 +726,8 @@ LSCV_MC_integral <- function(XX, b, j, method) {
   n_MC_total <- ceiling(1000 / cores_per_node) * cores_per_node
   n_MC_per_core <- n_MC_total / cores_per_node  # guaranteed to be an integer
   
-  # Start parallel cluster
-  cl <- makeCluster(cores_per_node)
-  clusterExport(cl, varlist = c("construct_X", "hat_f", "f", "XX", "b", "j", "method", "delta"), envir = environment())
+  # Set up a parallel cluster to distribute the computation
+  cl <- setup_parallel_cluster()
   
   # Perform parallel MC estimation with local sampling
   estimates <- parLapply(cl, 1:cores_per_node, function(core_id) {
@@ -1224,12 +1224,9 @@ b_opt_MC_grid <- function(XX, j, method, return_LSCV_MC = FALSE) {
 #####################################
 
 ISE <- function(XX, j, method, tolerance = tol1) {
-  if (method == "WK") {
-    return(b_opt_MC_grid(XX, j, method, TRUE))
-  } else {
     b_opt_MC_grid_value <- b_opt_MC_grid(XX, j, method)
+
     return(LSCV_MC_integral(XX, b_opt_MC_grid_value, j, method))
-  }
 }
 
 # # Tests the ISE function over all j in JJ for both WK and LG methods
