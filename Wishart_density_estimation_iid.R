@@ -160,7 +160,7 @@ d <- 2 # width of the square matrices
 delta <- 0.1 # lower bound on the eigenvalues of SPD matrices in LSCV
 
 MM <- list("WK", "LG") # list of density estimation methods
-NN <- c(100, 200) # sample sizes
+NN <- c(500,1000) # sample sizes
 JJ <- 1:6 # target density function indices
 RR <- 1:4 # replication indices
 
@@ -176,7 +176,7 @@ tol2 <- 1e-1
 resources_list <- list(
   cpus_per_task = cores_per_node,
   mem = "240G",
-  walltime = "3:00:00",
+  walltime = "24:00:00",
   nodes = 1
   # Omit 'partition' to let SLURM choose
 )

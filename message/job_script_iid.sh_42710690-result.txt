@@ -1,0 +1,3 @@
+[1] "Elapsed time: 51.04 minutes"
+[1] "Raw results saved to raw_ISE_results_iid.csv"
+[1] "Summary results saved to ISE_results_iid.csv"
