@@ -64,6 +64,8 @@ vars_to_export <- c(
   "S2",
   "S3",
   "S4",
+  "S5",
+  "S6",
   "XX",
   "XX_data",
   "XX_sample",
@@ -157,14 +159,14 @@ path <- getwd()
 ################
 
 d <- 2 # width of the square matrices
-delta <- 0.1 # lower bound on the eigenvalues of SPD matrices in LSCV
+delta <- 0.01 # lower bound on the eigenvalues of SPD matrices in LSCV
 
 MM <- list("WK", "LG") # list of density estimation methods
-NN <- c(500,1000) # sample sizes
+NN <- c(100, 200) # sample sizes
 JJ <- 1:6 # target density function indices
-RR <- 1:4 # replication indices
+RR <- 1:1 # replication indices
 
-cores_per_node <- 64 # number of cores for each node in the super-computer
+cores_per_node <- 32 # number of cores for each node in the super-computer
 
 tol1 <- 1e-1
 tol2 <- 1e-1
@@ -212,7 +214,7 @@ BB <- function(method) {
   if (method == "WK") {
     return(seq(0.02, 1, length.out = cores_per_node))  # BB_WK sequence
   } else if (method == "LG") {
-    return(seq(0.02, 2, length.out = cores_per_node))  # BB_LG sequence
+    return(seq(0.02, 1, length.out = cores_per_node))  # BB_LG sequence
   } else {
     stop("Invalid method. Should be 'WK' or 'LG'.")
   }
@@ -228,6 +230,9 @@ S1 <- matrix(c(1, 0.1, 0.1, 1), nrow = 2)
 S2 <- matrix(c(1, -0.9, -0.9, 1), nrow = 2)
 S3 <- matrix(c(0.5, 0, 0, 0.5), nrow = 2)
 S4 <- matrix(c(1, -0.5, -0.5, 1), nrow = 2)
+
+S5 <- matrix(c(5, 0, 0, 1), nrow = 2)
+S6 <- matrix(c(2, -1.4, -1.4, 2), nrow = 2)
 
 # Random generation of observations
 
@@ -253,12 +258,12 @@ XX <- function(j, n) {
                 },
                 "3" = {
                   lapply(1:n, function(x) {
-                    LaplacesDemon::rinvwishart(5, S2)
+                    LaplacesDemon::rinvwishart(5, S5)
                   })
                 },
                 "4" = {
                   lapply(1:n, function(x) {
-                    LaplacesDemon::rinvwishart(6, S3)
+                    LaplacesDemon::rinvwishart(6, S6)
                   })
                 },
                 "5" = {
@@ -374,10 +379,10 @@ f <- function(j, X) { # X is an SPD matrix of size d x d
     res <- 0.5 * LaplacesDemon::dwishart(X, 5, S3) + 0.5 * LaplacesDemon::dwishart(X, 6, S4)
   } else if (j == 3) {
     # Case when j = 3
-    res <- LaplacesDemon::dinvwishart(X, 5, S2)
+    res <- LaplacesDemon::dinvwishart(X, 5, S5)
   } else if (j == 4) {
     # Case when j = 4
-    res <- LaplacesDemon::dinvwishart(X, 6, S3)
+    res <- LaplacesDemon::dinvwishart(X, 6, S6)
   } else if (j == 5) {
     # Case when j = 5
     res <- dmatrixbeta_typeII(X, 2, 4)
@@ -1081,6 +1086,35 @@ b_opt_MC_grid <- function(XX, j, method, return_LSCV_MC = FALSE) {
   }
 }
 
+# Optimal bandwidth (grid version using LSCV_MC_integral)
+
+b_opt_MC_integral_grid <- function(XX, j, method, return_LSCV_MC_integral = FALSE) {
+  
+  # Generate the grid of bandwidths based on the method
+  b_grid <- BB(method)
+  
+  # Initialize vector to store LSCV_MC_integral values
+  LSCV_MC_integral_values <- numeric(length(b_grid))
+  
+  # Loop sequentially over bandwidth values (parallelization happens inside LSCV_MC_integral)
+  for (k in seq_along(b_grid)) {
+    b <- b_grid[k]
+    LSCV_MC_integral_values[k] <- LSCV_MC_integral(XX, b, j, method)
+  }
+  
+  # Identify the minimum of the LSCV_MC_integral values
+  min_index <- which.min(LSCV_MC_integral_values)
+  b_opt_value <- b_grid[min_index]
+  min_LSCV_MC_integral_value <- LSCV_MC_integral_values[min_index]
+  
+  # Return either the optimal bandwidth or the associated LSCV_MC_integral value
+  if (return_LSCV_MC_integral) {
+    return(min_LSCV_MC_integral_value)
+  } else {
+    return(b_opt_value)
+  }
+}
+
 # # Tests the b_opt_MC_grid function over all j in JJ for both WK and LG methods
 
 # # Parameters for testing
@@ -1223,10 +1257,14 @@ b_opt_MC_grid <- function(XX, j, method, return_LSCV_MC = FALSE) {
 ## Integrated Squared Errors (ISE) ##
 #####################################
 
-ISE <- function(XX, j, method, tolerance = tol1) {
-    b_opt_MC_grid_value <- b_opt_MC_grid(XX, j, method)
+# ISE <- function(XX, j, method, tolerance = tol1) {
+#     b_opt_MC_grid_value <- b_opt_MC_grid(XX, j, method)
+# 
+#     return(LSCV_MC_integral(XX, b_opt_MC_grid_value, j, method))
+# }
 
-    return(LSCV_MC_integral(XX, b_opt_MC_grid_value, j, method))
+ISE <- function(XX, j, method, tolerance = tol1) {
+  b_opt_MC_integral_grid(XX, j, method, return_LSCV_MC_integral = TRUE)
 }
 
 # # Tests the ISE function over all j in JJ for both WK and LG methods
@@ -1278,27 +1316,168 @@ ISE <- function(XX, j, method, tolerance = tol1) {
 # # Print the elapsed time in minutes
 # cat("Elapsed time: ", round(elapsed_time_minutes, 2), "minutes\n")
 
+# ###############################
+# ## Main code (exact version) ##
+# ###############################
+# 
+# .libPaths("~/R/library")
+# 
+# # Disable the check for random number generation misuse in doFuture
+# options(doFuture.rng.onMisuse = "ignore")
+# 
+# # Register the doFuture parallel backend
+# registerDoFuture()
+# 
+# # Tweak the batchtools_slurm with the custom template and resources
+# myslurm <- tweak(
+#   batchtools_slurm,
+#   template = "batchtools.slurm.iid.tmpl",
+#   resources = resources_list
+# )
+# 
+# # Set the plan for future
+# plan(list(myslurm, multisession))
+# 
+# # Create empty data frames to store the results
+# raw_results <- data.frame(
+#   j = integer(),
+#   n = integer(),
+#   method = character(),
+#   ISE = numeric(),
+#   stringsAsFactors = FALSE
+# )
+# 
+# # Capture the start time
+# start_time <- Sys.time()
+# 
+# # Parallel loop over the replications (RR), each node processes one set of RR values
+# res <- foreach(r = RR, .combine = "rbind", 
+#                .export = vars_to_export,
+#                .packages = libraries_to_load) %dopar% {
+#   # Set a unique seed for each node (replication)
+#   set.seed(r)
+#   
+#   # Set library paths within each worker node
+#   .libPaths("~/R/library")
+#   
+#   local_raw_results <- data.frame(
+#     j = integer(),
+#     n = integer(),
+#     method = character(),
+#     ISE = numeric(),
+#     time_seconds = numeric(), # New column for elapsed time (***)
+#     stringsAsFactors = FALSE
+#   )
+# 
+#   # Loop over combinations of j, n, and method within each worker
+#   for (j in JJ) {
+#     for (n in NN) {
+#       XX_data <- XX(j, n) # Generate the observations
+# 
+#       for (method in MM) {
+#         start_time <- Sys.time() # Start the timer (***)
+#         ISE_value <- ISE(XX_data, j, method) # Calculate ISE for the current replication
+#         end_time <- Sys.time() # End the timer (***)
+#         elapsed_time_seconds <- as.numeric(difftime(end_time, start_time, units = "secs")) # (***)
+#         
+#         # Store the result for this specific replication
+#         local_raw_results <- rbind(
+#           local_raw_results,
+#           data.frame(
+#             j = j,
+#             n = n,
+#             method = method,
+#             ISE = ISE_value,
+#             time_seconds = elapsed_time_seconds, # Save elapsed time (***)
+#             stringsAsFactors = FALSE
+#           )
+#         )
+#       }
+#     }
+#   }
+#   
+#   # Return the raw results for this replication
+#   return(local_raw_results)
+# }
+# 
+# # Combine results from all nodes
+# raw_results <- res
+# 
+# # Stop parallel execution
+# plan(sequential)
+# 
+# # Calculate the duration in minutes
+# elapsed_time_minutes <- as.numeric(difftime(Sys.time(), start_time, units = "mins"))
+# print(paste("Elapsed time:", round(elapsed_time_minutes, 2), "minutes"))
+# 
+# # Save the raw results to a CSV file in the specified path
+# raw_output_file <- file.path(path, "raw_ISE_results_iid.csv")
+# write.csv(raw_results, raw_output_file, row.names = FALSE)
+# 
+# print("Raw results saved to raw_ISE_results_iid.csv")
+# 
+# #########################
+# ## Process the results ##
+# #########################
+# 
+# # Create a data frame to store the summary results
+# summary_results <- data.frame(
+#   j = integer(),
+#   n = integer(),
+#   method = character(),
+#   mean_ISE = numeric(),
+#   sd_ISE = numeric(),
+#   median_ISE = numeric(),
+#   IQR_ISE = numeric(),
+#   mean_time_seconds = numeric(), # New column for mean elapsed time (***)
+#   stringsAsFactors = FALSE
+# )
+# 
+# # Loop through the results to compute the summary statistics
+# for (j in JJ) {
+#   for (n in NN) {
+#     for (method in MM) {
+#       # Filter the raw results by j, n, and method
+#       filtered_results <- raw_results %>%
+#         filter(j == !!j, n == !!n, method == !!method)
+#       
+#       ISE_values <- filtered_results$ISE
+#       elapsed_times <- filtered_results$time_seconds # Extract elapsed times (***)
+#       
+#       mean_ISE <- mean(ISE_values)
+#       sd_ISE <- sd(ISE_values)
+#       median_ISE <- median(ISE_values)
+#       IQR_ISE <- IQR(ISE_values)
+#       mean_time_seconds <- mean(elapsed_times) # Calculate mean elapsed time (***)
+#       
+#       # Store the summary results
+#       summary_results <- rbind(
+#         summary_results,
+#         data.frame(
+#           j = j,
+#           n = n,
+#           method = method,
+#           mean_ISE = mean_ISE,
+#           sd_ISE = sd_ISE,
+#           median_ISE = median_ISE,
+#           IQR_ISE = IQR_ISE,
+#           mean_time_seconds = mean_time_seconds, # Save mean elapsed time (***)
+#           stringsAsFactors = FALSE
+#         )
+#       )
+#     }
+#   }
+# }
+# 
+# # Save the summary results to a CSV file in the specified path
+# summary_output_file <- file.path(path, "ISE_results_iid.csv")
+# write.csv(summary_results, summary_output_file, row.names = FALSE)
+# 
+# print("Summary results saved to ISE_results_iid.csv")
+
 ###############################
-## Main code (exact version) ##
+## Main code (one node)      ##
 ###############################
-
-.libPaths("~/R/library")
-
-# Disable the check for random number generation misuse in doFuture
-options(doFuture.rng.onMisuse = "ignore")
-
-# Register the doFuture parallel backend
-registerDoFuture()
-
-# Tweak the batchtools_slurm with the custom template and resources
-myslurm <- tweak(
-  batchtools_slurm,
-  template = "batchtools.slurm.iid.tmpl",
-  resources = resources_list
-)
-
-# Set the plan for future
-plan(list(myslurm, multisession))
 
 # Create empty data frames to store the results
 raw_results <- data.frame(
@@ -1306,83 +1485,63 @@ raw_results <- data.frame(
   n = integer(),
   method = character(),
   ISE = numeric(),
+  time_seconds = numeric(), # New column for elapsed time
   stringsAsFactors = FALSE
 )
 
-# Capture the start time
+# Capture the global start time
 start_time <- Sys.time()
 
-# Parallel loop over the replications (RR), each node processes one set of RR values
-res <- foreach(r = RR, .combine = "rbind", 
-               .export = vars_to_export,
-               .packages = libraries_to_load) %dopar% {
-  # Set a unique seed for each node (replication)
-  set.seed(r)
+# Loop sequentially over RR, j, n, and method
+for (r in RR) {
+  set.seed(r)  # Set seed for reproducibility
   
-  # Set library paths within each worker node
-  .libPaths("~/R/library")
-  
-  local_raw_results <- data.frame(
-    j = integer(),
-    n = integer(),
-    method = character(),
-    ISE = numeric(),
-    time_seconds = numeric(), # New column for elapsed time (***)
-    stringsAsFactors = FALSE
-  )
-
-  # Loop over combinations of j, n, and method within each worker
   for (j in JJ) {
     for (n in NN) {
-      XX_data <- XX(j, n) # Generate the observations
-
+      XX_data <- XX(j, n)  # Generate the observations
+      
       for (method in MM) {
-        start_time <- Sys.time() # Start the timer (***)
-        ISE_value <- ISE(XX_data, j, method) # Calculate ISE for the current replication
-        end_time <- Sys.time() # End the timer (***)
-        elapsed_time_seconds <- as.numeric(difftime(end_time, start_time, units = "secs")) # (***)
+        start_time_individual <- Sys.time()  # Start timer for this run
         
-        # Store the result for this specific replication
-        local_raw_results <- rbind(
-          local_raw_results,
+        ISE_value <- ISE(XX_data, j, method)  # Compute ISE
+        
+        end_time_individual <- Sys.time()  # End timer
+        elapsed_time_seconds <- as.numeric(difftime(end_time_individual, start_time_individual, units = "secs"))
+        
+        # Append result to the raw_results data frame
+        raw_results <- rbind(
+          raw_results,
           data.frame(
             j = j,
             n = n,
             method = method,
             ISE = ISE_value,
-            time_seconds = elapsed_time_seconds, # Save elapsed time (***)
+            time_seconds = elapsed_time_seconds,
             stringsAsFactors = FALSE
           )
         )
+        
+        cat(sprintf("Done: j = %d, n = %d, method = %s, ISE = %.6f, time = %.2f seconds\n",
+                    j, n, method, ISE_value, elapsed_time_seconds))
       }
     }
   }
-  
-  # Return the raw results for this replication
-  return(local_raw_results)
 }
 
-# Combine results from all nodes
-raw_results <- res
-
-# Stop parallel execution
-plan(sequential)
-
-# Calculate the duration in minutes
+# Compute total elapsed time
 elapsed_time_minutes <- as.numeric(difftime(Sys.time(), start_time, units = "mins"))
-print(paste("Elapsed time:", round(elapsed_time_minutes, 2), "minutes"))
+cat("Total elapsed time:", round(elapsed_time_minutes, 2), "minutes\n")
 
-# Save the raw results to a CSV file in the specified path
+# Save raw results
 raw_output_file <- file.path(path, "raw_ISE_results_iid.csv")
 write.csv(raw_results, raw_output_file, row.names = FALSE)
-
-print("Raw results saved to raw_ISE_results_iid.csv")
+cat("Raw results saved to raw_ISE_results_iid.csv\n")
 
 #########################
 ## Process the results ##
 #########################
 
-# Create a data frame to store the summary results
+# Create summary data frame
 summary_results <- data.frame(
   j = integer(),
   n = integer(),
@@ -1391,39 +1550,31 @@ summary_results <- data.frame(
   sd_ISE = numeric(),
   median_ISE = numeric(),
   IQR_ISE = numeric(),
-  mean_time_seconds = numeric(), # New column for mean elapsed time (***)
+  mean_time_seconds = numeric(),
   stringsAsFactors = FALSE
 )
 
-# Loop through the results to compute the summary statistics
+# Compute summaries by (j, n, method)
 for (j in JJ) {
   for (n in NN) {
     for (method in MM) {
-      # Filter the raw results by j, n, and method
-      filtered_results <- raw_results %>%
+      subset_results <- raw_results %>%
         filter(j == !!j, n == !!n, method == !!method)
       
-      ISE_values <- filtered_results$ISE
-      elapsed_times <- filtered_results$time_seconds # Extract elapsed times (***)
+      ISE_vals <- subset_results$ISE
+      times <- subset_results$time_seconds
       
-      mean_ISE <- mean(ISE_values)
-      sd_ISE <- sd(ISE_values)
-      median_ISE <- median(ISE_values)
-      IQR_ISE <- IQR(ISE_values)
-      mean_time_seconds <- mean(elapsed_times) # Calculate mean elapsed time (***)
-      
-      # Store the summary results
       summary_results <- rbind(
         summary_results,
         data.frame(
           j = j,
           n = n,
           method = method,
-          mean_ISE = mean_ISE,
-          sd_ISE = sd_ISE,
-          median_ISE = median_ISE,
-          IQR_ISE = IQR_ISE,
-          mean_time_seconds = mean_time_seconds, # Save mean elapsed time (***)
+          mean_ISE = mean(ISE_vals),
+          sd_ISE = sd(ISE_vals),
+          median_ISE = median(ISE_vals),
+          IQR_ISE = IQR(ISE_vals),
+          mean_time_seconds = mean(times),
           stringsAsFactors = FALSE
         )
       )
@@ -1431,8 +1582,8 @@ for (j in JJ) {
   }
 }
 
-# Save the summary results to a CSV file in the specified path
+# Save summary results
 summary_output_file <- file.path(path, "ISE_results_iid.csv")
 write.csv(summary_results, summary_output_file, row.names = FALSE)
+cat("Summary results saved to ISE_results_iid.csv\n")
 
-print("Summary results saved to ISE_results_iid.csv")
